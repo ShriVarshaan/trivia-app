@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "../config/axios.js";
+import { useAuth } from "../context/AuthContext";
 import FormInput from "../components/FormInput.jsx";
 
 export default function Login(){
@@ -8,14 +9,23 @@ export default function Login(){
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
     const navigate = useNavigate();
+    const { isAuthenticated, login } = useAuth();
+
+    useEffect(() => {
+        if (isAuthenticated) {
+            alert("You are already logged in!");
+            navigate("/");
+        }
+    }, [isAuthenticated, navigate]);
 
     async function handleSubmit(event){
         event.preventDefault();
 
         try{
             const response = await axios.post("/auth/login", {email, password});
-            const token = response.data.token;
-            localStorage.setItem("token", token);
+            const {token, user} = response.data;
+            
+            login(token, user);
             navigate("/");
         } catch (error) {
             console.error("Login failed:", error);
