@@ -33,6 +33,7 @@ export async function signup(req, res){
         const token = jwt.sign({id: newUser.id}, process.env.JWT_SECRET, {expiresIn: "7d"});
         res.status(201).json({message: "User created successfully", user: userWithoutPassword, token: token})
     } catch (error) {
+        console.log("Here is the error", error)
         res.status(500).json({message: "Error creating user", error: error.message})
     }
 }

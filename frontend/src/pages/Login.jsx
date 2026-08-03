@@ -29,7 +29,7 @@ export default function Login(){
             <div className="loginPage">
                 <form onSubmit={handleSubmit} className="loginForm">
                     <FormInput 
-                        label="Email" 
+                        label="email" 
                         type="email" 
                         name="email" 
                         id="email" 
@@ -38,7 +38,7 @@ export default function Login(){
                         onChange={setEmail} 
                     />
                     <FormInput 
-                        label="Password" 
+                        label="password" 
                         type="password" 
                         name="password" 
                         id="password" 
