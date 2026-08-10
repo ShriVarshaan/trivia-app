@@ -18,3 +18,16 @@ model User {
   email         String         @unique @db.VarChar
   password      String         @db.VarChar
 }
+
+enum RoomStatus {
+  waiting
+  started
+  finished
+}
+
+model Room {
+  room_id     String     @id @db.Char(6)
+  host        String
+  status      RoomStatus @default(waiting)
+  max_players Int        @default(2)
+}
