@@ -27,3 +27,8 @@ export type User = Prisma.UserModel
  * 
  */
 export type Room = Prisma.RoomModel
+/**
+ * Model RoomPlayer
+ * 
+ */
+export type RoomPlayer = Prisma.RoomPlayerModel

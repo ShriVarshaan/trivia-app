@@ -10,4 +10,5 @@
  */
 export type * from './models/User.ts'
 export type * from './models/Room.ts'
+export type * from './models/RoomPlayer.ts'
 export type * from './commonInputTypes.ts'

@@ -17,6 +17,9 @@ model User {
   username      String         @db.VarChar
   email         String         @unique @db.VarChar
   password      String         @db.VarChar
+
+  hostedRooms Room[]       @relation("HostUser")
+  roomPlayers RoomPlayer[]
 }
 
 enum RoomStatus {
@@ -27,8 +30,24 @@ enum RoomStatus {
 
 model Room {
   room_id     String     @id @db.Char(6)
-  host        Int      
+  host_id     Int      
   status      RoomStatus @default(waiting)
   max_players Int        @default(2)
   cur_players Int        @default(1)
+
+  host        User         @relation("HostUser", fields: [host_id], references: [id])
+  players     RoomPlayer[]
+}
+
+model RoomPlayer {
+  id        Int      @id @default(autoincrement())
+  user_id   Int
+  room_id   String   @db.Char(6)
+  joined_at DateTime @default(now())
+  is_ready  Boolean  @default(false)
+
+  user      User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  room      Room     @relation(fields: [room_id], references: [room_id], onDelete: Cascade)
+
+  @@unique([user_id, room_id])
 }

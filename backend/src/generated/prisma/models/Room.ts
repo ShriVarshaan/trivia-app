@@ -27,20 +27,20 @@ export type AggregateRoom = {
 }
 
 export type RoomAvgAggregateOutputType = {
-  host: number | null
+  host_id: number | null
   max_players: number | null
   cur_players: number | null
 }
 
 export type RoomSumAggregateOutputType = {
-  host: number | null
+  host_id: number | null
   max_players: number | null
   cur_players: number | null
 }
 
 export type RoomMinAggregateOutputType = {
   room_id: string | null
-  host: number | null
+  host_id: number | null
   status: $Enums.RoomStatus | null
   max_players: number | null
   cur_players: number | null
@@ -48,7 +48,7 @@ export type RoomMinAggregateOutputType = {
 
 export type RoomMaxAggregateOutputType = {
   room_id: string | null
-  host: number | null
+  host_id: number | null
   status: $Enums.RoomStatus | null
   max_players: number | null
   cur_players: number | null
@@ -56,7 +56,7 @@ export type RoomMaxAggregateOutputType = {
 
 export type RoomCountAggregateOutputType = {
   room_id: number
-  host: number
+  host_id: number
   status: number
   max_players: number
   cur_players: number
@@ -65,20 +65,20 @@ export type RoomCountAggregateOutputType = {
 
 
 export type RoomAvgAggregateInputType = {
-  host?: true
+  host_id?: true
   max_players?: true
   cur_players?: true
 }
 
 export type RoomSumAggregateInputType = {
-  host?: true
+  host_id?: true
   max_players?: true
   cur_players?: true
 }
 
 export type RoomMinAggregateInputType = {
   room_id?: true
-  host?: true
+  host_id?: true
   status?: true
   max_players?: true
   cur_players?: true
@@ -86,7 +86,7 @@ export type RoomMinAggregateInputType = {
 
 export type RoomMaxAggregateInputType = {
   room_id?: true
-  host?: true
+  host_id?: true
   status?: true
   max_players?: true
   cur_players?: true
@@ -94,7 +94,7 @@ export type RoomMaxAggregateInputType = {
 
 export type RoomCountAggregateInputType = {
   room_id?: true
-  host?: true
+  host_id?: true
   status?: true
   max_players?: true
   cur_players?: true
@@ -189,7 +189,7 @@ export type RoomGroupByArgs<ExtArgs extends runtime.Types.Extensions.InternalArg
 
 export type RoomGroupByOutputType = {
   room_id: string
-  host: number
+  host_id: number
   status: $Enums.RoomStatus
   max_players: number
   cur_players: number
@@ -220,18 +220,22 @@ export type RoomWhereInput = {
   OR?: Prisma.RoomWhereInput[]
   NOT?: Prisma.RoomWhereInput | Prisma.RoomWhereInput[]
   room_id?: Prisma.StringFilter<"Room"> | string
-  host?: Prisma.IntFilter<"Room"> | number
+  host_id?: Prisma.IntFilter<"Room"> | number
   status?: Prisma.EnumRoomStatusFilter<"Room"> | $Enums.RoomStatus
   max_players?: Prisma.IntFilter<"Room"> | number
   cur_players?: Prisma.IntFilter<"Room"> | number
+  host?: Prisma.XOR<Prisma.UserScalarRelationFilter, Prisma.UserWhereInput>
+  players?: Prisma.RoomPlayerListRelationFilter
 }
 
 export type RoomOrderByWithRelationInput = {
   room_id?: Prisma.SortOrder
-  host?: Prisma.SortOrder
+  host_id?: Prisma.SortOrder
   status?: Prisma.SortOrder
   max_players?: Prisma.SortOrder
   cur_players?: Prisma.SortOrder
+  host?: Prisma.UserOrderByWithRelationInput
+  players?: Prisma.RoomPlayerOrderByRelationAggregateInput
 }
 
 export type RoomWhereUniqueInput = Prisma.AtLeast<{
@@ -239,15 +243,17 @@ export type RoomWhereUniqueInput = Prisma.AtLeast<{
   AND?: Prisma.RoomWhereInput | Prisma.RoomWhereInput[]
   OR?: Prisma.RoomWhereInput[]
   NOT?: Prisma.RoomWhereInput | Prisma.RoomWhereInput[]
-  host?: Prisma.IntFilter<"Room"> | number
+  host_id?: Prisma.IntFilter<"Room"> | number
   status?: Prisma.EnumRoomStatusFilter<"Room"> | $Enums.RoomStatus
   max_players?: Prisma.IntFilter<"Room"> | number
   cur_players?: Prisma.IntFilter<"Room"> | number
+  host?: Prisma.XOR<Prisma.UserScalarRelationFilter, Prisma.UserWhereInput>
+  players?: Prisma.RoomPlayerListRelationFilter
 }, "room_id">
 
 export type RoomOrderByWithAggregationInput = {
   room_id?: Prisma.SortOrder
-  host?: Prisma.SortOrder
+  host_id?: Prisma.SortOrder
   status?: Prisma.SortOrder
   max_players?: Prisma.SortOrder
   cur_players?: Prisma.SortOrder
@@ -263,7 +269,7 @@ export type RoomScalarWhereWithAggregatesInput = {
   OR?: Prisma.RoomScalarWhereWithAggregatesInput[]
   NOT?: Prisma.RoomScalarWhereWithAggregatesInput | Prisma.RoomScalarWhereWithAggregatesInput[]
   room_id?: Prisma.StringWithAggregatesFilter<"Room"> | string
-  host?: Prisma.IntWithAggregatesFilter<"Room"> | number
+  host_id?: Prisma.IntWithAggregatesFilter<"Room"> | number
   status?: Prisma.EnumRoomStatusWithAggregatesFilter<"Room"> | $Enums.RoomStatus
   max_players?: Prisma.IntWithAggregatesFilter<"Room"> | number
   cur_players?: Prisma.IntWithAggregatesFilter<"Room"> | number
@@ -271,39 +277,43 @@ export type RoomScalarWhereWithAggregatesInput = {
 
 export type RoomCreateInput = {
   room_id: string
-  host: number
   status?: $Enums.RoomStatus
   max_players?: number
   cur_players?: number
+  host: Prisma.UserCreateNestedOneWithoutHostedRoomsInput
+  players?: Prisma.RoomPlayerCreateNestedManyWithoutRoomInput
 }
 
 export type RoomUncheckedCreateInput = {
   room_id: string
-  host: number
+  host_id: number
   status?: $Enums.RoomStatus
   max_players?: number
   cur_players?: number
+  players?: Prisma.RoomPlayerUncheckedCreateNestedManyWithoutRoomInput
 }
 
 export type RoomUpdateInput = {
   room_id?: Prisma.StringFieldUpdateOperationsInput | string
-  host?: Prisma.IntFieldUpdateOperationsInput | number
   status?: Prisma.EnumRoomStatusFieldUpdateOperationsInput | $Enums.RoomStatus
   max_players?: Prisma.IntFieldUpdateOperationsInput | number
   cur_players?: Prisma.IntFieldUpdateOperationsInput | number
+  host?: Prisma.UserUpdateOneRequiredWithoutHostedRoomsNestedInput
+  players?: Prisma.RoomPlayerUpdateManyWithoutRoomNestedInput
 }
 
 export type RoomUncheckedUpdateInput = {
   room_id?: Prisma.StringFieldUpdateOperationsInput | string
-  host?: Prisma.IntFieldUpdateOperationsInput | number
+  host_id?: Prisma.IntFieldUpdateOperationsInput | number
   status?: Prisma.EnumRoomStatusFieldUpdateOperationsInput | $Enums.RoomStatus
   max_players?: Prisma.IntFieldUpdateOperationsInput | number
   cur_players?: Prisma.IntFieldUpdateOperationsInput | number
+  players?: Prisma.RoomPlayerUncheckedUpdateManyWithoutRoomNestedInput
 }
 
 export type RoomCreateManyInput = {
   room_id: string
-  host: number
+  host_id: number
   status?: $Enums.RoomStatus
   max_players?: number
   cur_players?: number
@@ -311,7 +321,6 @@ export type RoomCreateManyInput = {
 
 export type RoomUpdateManyMutationInput = {
   room_id?: Prisma.StringFieldUpdateOperationsInput | string
-  host?: Prisma.IntFieldUpdateOperationsInput | number
   status?: Prisma.EnumRoomStatusFieldUpdateOperationsInput | $Enums.RoomStatus
   max_players?: Prisma.IntFieldUpdateOperationsInput | number
   cur_players?: Prisma.IntFieldUpdateOperationsInput | number
@@ -319,29 +328,39 @@ export type RoomUpdateManyMutationInput = {
 
 export type RoomUncheckedUpdateManyInput = {
   room_id?: Prisma.StringFieldUpdateOperationsInput | string
-  host?: Prisma.IntFieldUpdateOperationsInput | number
+  host_id?: Prisma.IntFieldUpdateOperationsInput | number
   status?: Prisma.EnumRoomStatusFieldUpdateOperationsInput | $Enums.RoomStatus
   max_players?: Prisma.IntFieldUpdateOperationsInput | number
   cur_players?: Prisma.IntFieldUpdateOperationsInput | number
 }
 
+export type RoomListRelationFilter = {
+  every?: Prisma.RoomWhereInput
+  some?: Prisma.RoomWhereInput
+  none?: Prisma.RoomWhereInput
+}
+
+export type RoomOrderByRelationAggregateInput = {
+  _count?: Prisma.SortOrder
+}
+
 export type RoomCountOrderByAggregateInput = {
   room_id?: Prisma.SortOrder
-  host?: Prisma.SortOrder
+  host_id?: Prisma.SortOrder
   status?: Prisma.SortOrder
   max_players?: Prisma.SortOrder
   cur_players?: Prisma.SortOrder
 }
 
 export type RoomAvgOrderByAggregateInput = {
-  host?: Prisma.SortOrder
+  host_id?: Prisma.SortOrder
   max_players?: Prisma.SortOrder
   cur_players?: Prisma.SortOrder
 }
 
 export type RoomMaxOrderByAggregateInput = {
   room_id?: Prisma.SortOrder
-  host?: Prisma.SortOrder
+  host_id?: Prisma.SortOrder
   status?: Prisma.SortOrder
   max_players?: Prisma.SortOrder
   cur_players?: Prisma.SortOrder
@@ -349,64 +368,304 @@ export type RoomMaxOrderByAggregateInput = {
 
 export type RoomMinOrderByAggregateInput = {
   room_id?: Prisma.SortOrder
-  host?: Prisma.SortOrder
+  host_id?: Prisma.SortOrder
   status?: Prisma.SortOrder
   max_players?: Prisma.SortOrder
   cur_players?: Prisma.SortOrder
 }
 
 export type RoomSumOrderByAggregateInput = {
-  host?: Prisma.SortOrder
+  host_id?: Prisma.SortOrder
   max_players?: Prisma.SortOrder
   cur_players?: Prisma.SortOrder
+}
+
+export type RoomScalarRelationFilter = {
+  is?: Prisma.RoomWhereInput
+  isNot?: Prisma.RoomWhereInput
+}
+
+export type RoomCreateNestedManyWithoutHostInput = {
+  create?: Prisma.XOR<Prisma.RoomCreateWithoutHostInput, Prisma.RoomUncheckedCreateWithoutHostInput> | Prisma.RoomCreateWithoutHostInput[] | Prisma.RoomUncheckedCreateWithoutHostInput[]
+  connectOrCreate?: Prisma.RoomCreateOrConnectWithoutHostInput | Prisma.RoomCreateOrConnectWithoutHostInput[]
+  createMany?: Prisma.RoomCreateManyHostInputEnvelope
+  connect?: Prisma.RoomWhereUniqueInput | Prisma.RoomWhereUniqueInput[]
+}
+
+export type RoomUncheckedCreateNestedManyWithoutHostInput = {
+  create?: Prisma.XOR<Prisma.RoomCreateWithoutHostInput, Prisma.RoomUncheckedCreateWithoutHostInput> | Prisma.RoomCreateWithoutHostInput[] | Prisma.RoomUncheckedCreateWithoutHostInput[]
+  connectOrCreate?: Prisma.RoomCreateOrConnectWithoutHostInput | Prisma.RoomCreateOrConnectWithoutHostInput[]
+  createMany?: Prisma.RoomCreateManyHostInputEnvelope
+  connect?: Prisma.RoomWhereUniqueInput | Prisma.RoomWhereUniqueInput[]
+}
+
+export type RoomUpdateManyWithoutHostNestedInput = {
+  create?: Prisma.XOR<Prisma.RoomCreateWithoutHostInput, Prisma.RoomUncheckedCreateWithoutHostInput> | Prisma.RoomCreateWithoutHostInput[] | Prisma.RoomUncheckedCreateWithoutHostInput[]
+  connectOrCreate?: Prisma.RoomCreateOrConnectWithoutHostInput | Prisma.RoomCreateOrConnectWithoutHostInput[]
+  upsert?: Prisma.RoomUpsertWithWhereUniqueWithoutHostInput | Prisma.RoomUpsertWithWhereUniqueWithoutHostInput[]
+  createMany?: Prisma.RoomCreateManyHostInputEnvelope
+  set?: Prisma.RoomWhereUniqueInput | Prisma.RoomWhereUniqueInput[]
+  disconnect?: Prisma.RoomWhereUniqueInput | Prisma.RoomWhereUniqueInput[]
+  delete?: Prisma.RoomWhereUniqueInput | Prisma.RoomWhereUniqueInput[]
+  connect?: Prisma.RoomWhereUniqueInput | Prisma.RoomWhereUniqueInput[]
+  update?: Prisma.RoomUpdateWithWhereUniqueWithoutHostInput | Prisma.RoomUpdateWithWhereUniqueWithoutHostInput[]
+  updateMany?: Prisma.RoomUpdateManyWithWhereWithoutHostInput | Prisma.RoomUpdateManyWithWhereWithoutHostInput[]
+  deleteMany?: Prisma.RoomScalarWhereInput | Prisma.RoomScalarWhereInput[]
+}
+
+export type RoomUncheckedUpdateManyWithoutHostNestedInput = {
+  create?: Prisma.XOR<Prisma.RoomCreateWithoutHostInput, Prisma.RoomUncheckedCreateWithoutHostInput> | Prisma.RoomCreateWithoutHostInput[] | Prisma.RoomUncheckedCreateWithoutHostInput[]
+  connectOrCreate?: Prisma.RoomCreateOrConnectWithoutHostInput | Prisma.RoomCreateOrConnectWithoutHostInput[]
+  upsert?: Prisma.RoomUpsertWithWhereUniqueWithoutHostInput | Prisma.RoomUpsertWithWhereUniqueWithoutHostInput[]
+  createMany?: Prisma.RoomCreateManyHostInputEnvelope
+  set?: Prisma.RoomWhereUniqueInput | Prisma.RoomWhereUniqueInput[]
+  disconnect?: Prisma.RoomWhereUniqueInput | Prisma.RoomWhereUniqueInput[]
+  delete?: Prisma.RoomWhereUniqueInput | Prisma.RoomWhereUniqueInput[]
+  connect?: Prisma.RoomWhereUniqueInput | Prisma.RoomWhereUniqueInput[]
+  update?: Prisma.RoomUpdateWithWhereUniqueWithoutHostInput | Prisma.RoomUpdateWithWhereUniqueWithoutHostInput[]
+  updateMany?: Prisma.RoomUpdateManyWithWhereWithoutHostInput | Prisma.RoomUpdateManyWithWhereWithoutHostInput[]
+  deleteMany?: Prisma.RoomScalarWhereInput | Prisma.RoomScalarWhereInput[]
 }
 
 export type EnumRoomStatusFieldUpdateOperationsInput = {
   set?: $Enums.RoomStatus
 }
 
+export type RoomCreateNestedOneWithoutPlayersInput = {
+  create?: Prisma.XOR<Prisma.RoomCreateWithoutPlayersInput, Prisma.RoomUncheckedCreateWithoutPlayersInput>
+  connectOrCreate?: Prisma.RoomCreateOrConnectWithoutPlayersInput
+  connect?: Prisma.RoomWhereUniqueInput
+}
+
+export type RoomUpdateOneRequiredWithoutPlayersNestedInput = {
+  create?: Prisma.XOR<Prisma.RoomCreateWithoutPlayersInput, Prisma.RoomUncheckedCreateWithoutPlayersInput>
+  connectOrCreate?: Prisma.RoomCreateOrConnectWithoutPlayersInput
+  upsert?: Prisma.RoomUpsertWithoutPlayersInput
+  connect?: Prisma.RoomWhereUniqueInput
+  update?: Prisma.XOR<Prisma.XOR<Prisma.RoomUpdateToOneWithWhereWithoutPlayersInput, Prisma.RoomUpdateWithoutPlayersInput>, Prisma.RoomUncheckedUpdateWithoutPlayersInput>
+}
+
+export type RoomCreateWithoutHostInput = {
+  room_id: string
+  status?: $Enums.RoomStatus
+  max_players?: number
+  cur_players?: number
+  players?: Prisma.RoomPlayerCreateNestedManyWithoutRoomInput
+}
+
+export type RoomUncheckedCreateWithoutHostInput = {
+  room_id: string
+  status?: $Enums.RoomStatus
+  max_players?: number
+  cur_players?: number
+  players?: Prisma.RoomPlayerUncheckedCreateNestedManyWithoutRoomInput
+}
+
+export type RoomCreateOrConnectWithoutHostInput = {
+  where: Prisma.RoomWhereUniqueInput
+  create: Prisma.XOR<Prisma.RoomCreateWithoutHostInput, Prisma.RoomUncheckedCreateWithoutHostInput>
+}
+
+export type RoomCreateManyHostInputEnvelope = {
+  data: Prisma.RoomCreateManyHostInput | Prisma.RoomCreateManyHostInput[]
+  skipDuplicates?: boolean
+}
+
+export type RoomUpsertWithWhereUniqueWithoutHostInput = {
+  where: Prisma.RoomWhereUniqueInput
+  update: Prisma.XOR<Prisma.RoomUpdateWithoutHostInput, Prisma.RoomUncheckedUpdateWithoutHostInput>
+  create: Prisma.XOR<Prisma.RoomCreateWithoutHostInput, Prisma.RoomUncheckedCreateWithoutHostInput>
+}
+
+export type RoomUpdateWithWhereUniqueWithoutHostInput = {
+  where: Prisma.RoomWhereUniqueInput
+  data: Prisma.XOR<Prisma.RoomUpdateWithoutHostInput, Prisma.RoomUncheckedUpdateWithoutHostInput>
+}
+
+export type RoomUpdateManyWithWhereWithoutHostInput = {
+  where: Prisma.RoomScalarWhereInput
+  data: Prisma.XOR<Prisma.RoomUpdateManyMutationInput, Prisma.RoomUncheckedUpdateManyWithoutHostInput>
+}
+
+export type RoomScalarWhereInput = {
+  AND?: Prisma.RoomScalarWhereInput | Prisma.RoomScalarWhereInput[]
+  OR?: Prisma.RoomScalarWhereInput[]
+  NOT?: Prisma.RoomScalarWhereInput | Prisma.RoomScalarWhereInput[]
+  room_id?: Prisma.StringFilter<"Room"> | string
+  host_id?: Prisma.IntFilter<"Room"> | number
+  status?: Prisma.EnumRoomStatusFilter<"Room"> | $Enums.RoomStatus
+  max_players?: Prisma.IntFilter<"Room"> | number
+  cur_players?: Prisma.IntFilter<"Room"> | number
+}
+
+export type RoomCreateWithoutPlayersInput = {
+  room_id: string
+  status?: $Enums.RoomStatus
+  max_players?: number
+  cur_players?: number
+  host: Prisma.UserCreateNestedOneWithoutHostedRoomsInput
+}
+
+export type RoomUncheckedCreateWithoutPlayersInput = {
+  room_id: string
+  host_id: number
+  status?: $Enums.RoomStatus
+  max_players?: number
+  cur_players?: number
+}
+
+export type RoomCreateOrConnectWithoutPlayersInput = {
+  where: Prisma.RoomWhereUniqueInput
+  create: Prisma.XOR<Prisma.RoomCreateWithoutPlayersInput, Prisma.RoomUncheckedCreateWithoutPlayersInput>
+}
+
+export type RoomUpsertWithoutPlayersInput = {
+  update: Prisma.XOR<Prisma.RoomUpdateWithoutPlayersInput, Prisma.RoomUncheckedUpdateWithoutPlayersInput>
+  create: Prisma.XOR<Prisma.RoomCreateWithoutPlayersInput, Prisma.RoomUncheckedCreateWithoutPlayersInput>
+  where?: Prisma.RoomWhereInput
+}
+
+export type RoomUpdateToOneWithWhereWithoutPlayersInput = {
+  where?: Prisma.RoomWhereInput
+  data: Prisma.XOR<Prisma.RoomUpdateWithoutPlayersInput, Prisma.RoomUncheckedUpdateWithoutPlayersInput>
+}
+
+export type RoomUpdateWithoutPlayersInput = {
+  room_id?: Prisma.StringFieldUpdateOperationsInput | string
+  status?: Prisma.EnumRoomStatusFieldUpdateOperationsInput | $Enums.RoomStatus
+  max_players?: Prisma.IntFieldUpdateOperationsInput | number
+  cur_players?: Prisma.IntFieldUpdateOperationsInput | number
+  host?: Prisma.UserUpdateOneRequiredWithoutHostedRoomsNestedInput
+}
+
+export type RoomUncheckedUpdateWithoutPlayersInput = {
+  room_id?: Prisma.StringFieldUpdateOperationsInput | string
+  host_id?: Prisma.IntFieldUpdateOperationsInput | number
+  status?: Prisma.EnumRoomStatusFieldUpdateOperationsInput | $Enums.RoomStatus
+  max_players?: Prisma.IntFieldUpdateOperationsInput | number
+  cur_players?: Prisma.IntFieldUpdateOperationsInput | number
+}
+
+export type RoomCreateManyHostInput = {
+  room_id: string
+  status?: $Enums.RoomStatus
+  max_players?: number
+  cur_players?: number
+}
+
+export type RoomUpdateWithoutHostInput = {
+  room_id?: Prisma.StringFieldUpdateOperationsInput | string
+  status?: Prisma.EnumRoomStatusFieldUpdateOperationsInput | $Enums.RoomStatus
+  max_players?: Prisma.IntFieldUpdateOperationsInput | number
+  cur_players?: Prisma.IntFieldUpdateOperationsInput | number
+  players?: Prisma.RoomPlayerUpdateManyWithoutRoomNestedInput
+}
+
+export type RoomUncheckedUpdateWithoutHostInput = {
+  room_id?: Prisma.StringFieldUpdateOperationsInput | string
+  status?: Prisma.EnumRoomStatusFieldUpdateOperationsInput | $Enums.RoomStatus
+  max_players?: Prisma.IntFieldUpdateOperationsInput | number
+  cur_players?: Prisma.IntFieldUpdateOperationsInput | number
+  players?: Prisma.RoomPlayerUncheckedUpdateManyWithoutRoomNestedInput
+}
+
+export type RoomUncheckedUpdateManyWithoutHostInput = {
+  room_id?: Prisma.StringFieldUpdateOperationsInput | string
+  status?: Prisma.EnumRoomStatusFieldUpdateOperationsInput | $Enums.RoomStatus
+  max_players?: Prisma.IntFieldUpdateOperationsInput | number
+  cur_players?: Prisma.IntFieldUpdateOperationsInput | number
+}
+
+
+/**
+ * Count Type RoomCountOutputType
+ */
+
+export type RoomCountOutputType = {
+  players: number
+}
+
+export type RoomCountOutputTypeSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  players?: boolean | RoomCountOutputTypeCountPlayersArgs
+}
+
+/**
+ * RoomCountOutputType without action
+ */
+export type RoomCountOutputTypeDefaultArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the RoomCountOutputType
+   */
+  select?: Prisma.RoomCountOutputTypeSelect<ExtArgs> | null
+}
+
+/**
+ * RoomCountOutputType without action
+ */
+export type RoomCountOutputTypeCountPlayersArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  where?: Prisma.RoomPlayerWhereInput
+}
 
 
 export type RoomSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
   room_id?: boolean
-  host?: boolean
+  host_id?: boolean
   status?: boolean
   max_players?: boolean
   cur_players?: boolean
+  host?: boolean | Prisma.UserDefaultArgs<ExtArgs>
+  players?: boolean | Prisma.Room$playersArgs<ExtArgs>
+  _count?: boolean | Prisma.RoomCountOutputTypeDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["room"]>
 
 export type RoomSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
   room_id?: boolean
-  host?: boolean
+  host_id?: boolean
   status?: boolean
   max_players?: boolean
   cur_players?: boolean
+  host?: boolean | Prisma.UserDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["room"]>
 
 export type RoomSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
   room_id?: boolean
-  host?: boolean
+  host_id?: boolean
   status?: boolean
   max_players?: boolean
   cur_players?: boolean
+  host?: boolean | Prisma.UserDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["room"]>
 
 export type RoomSelectScalar = {
   room_id?: boolean
-  host?: boolean
+  host_id?: boolean
   status?: boolean
   max_players?: boolean
   cur_players?: boolean
 }
 
-export type RoomOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"room_id" | "host" | "status" | "max_players" | "cur_players", ExtArgs["result"]["room"]>
+export type RoomOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"room_id" | "host_id" | "status" | "max_players" | "cur_players", ExtArgs["result"]["room"]>
+export type RoomInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  host?: boolean | Prisma.UserDefaultArgs<ExtArgs>
+  players?: boolean | Prisma.Room$playersArgs<ExtArgs>
+  _count?: boolean | Prisma.RoomCountOutputTypeDefaultArgs<ExtArgs>
+}
+export type RoomIncludeCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  host?: boolean | Prisma.UserDefaultArgs<ExtArgs>
+}
+export type RoomIncludeUpdateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  host?: boolean | Prisma.UserDefaultArgs<ExtArgs>
+}
 
 export type $RoomPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   name: "Room"
-  objects: {}
+  objects: {
+    host: Prisma.$UserPayload<ExtArgs>
+    players: Prisma.$RoomPlayerPayload<ExtArgs>[]
+  }
   scalars: runtime.Types.Extensions.GetPayloadResult<{
     room_id: string
-    host: number
+    host_id: number
     status: $Enums.RoomStatus
     max_players: number
     cur_players: number
@@ -804,6 +1063,8 @@ readonly fields: RoomFieldRefs;
  */
 export interface Prisma__RoomClient<T, Null = never, ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs, GlobalOmitOptions = {}> extends Prisma.PrismaPromise<T> {
   readonly [Symbol.toStringTag]: "PrismaPromise"
+  host<T extends Prisma.UserDefaultArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.UserDefaultArgs<ExtArgs>>): Prisma.Prisma__UserClient<runtime.Types.Result.GetResult<Prisma.$UserPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | Null, Null, ExtArgs, GlobalOmitOptions>
+  players<T extends Prisma.Room$playersArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Room$playersArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$RoomPlayerPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   /**
    * Attaches callbacks for the resolution and/or rejection of the Promise.
    * @param onfulfilled The callback to execute when the Promise is resolved.
@@ -834,7 +1095,7 @@ export interface Prisma__RoomClient<T, Null = never, ExtArgs extends runtime.Typ
  */
 export interface RoomFieldRefs {
   readonly room_id: Prisma.FieldRef<"Room", 'String'>
-  readonly host: Prisma.FieldRef<"Room", 'Int'>
+  readonly host_id: Prisma.FieldRef<"Room", 'Int'>
   readonly status: Prisma.FieldRef<"Room", 'RoomStatus'>
   readonly max_players: Prisma.FieldRef<"Room", 'Int'>
   readonly cur_players: Prisma.FieldRef<"Room", 'Int'>
@@ -855,6 +1116,10 @@ export type RoomFindUniqueArgs<ExtArgs extends runtime.Types.Extensions.Internal
    */
   omit?: Prisma.RoomOmit<ExtArgs> | null
   /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.RoomInclude<ExtArgs> | null
+  /**
    * Filter, which Room to fetch.
    */
   where: Prisma.RoomWhereUniqueInput
@@ -873,6 +1138,10 @@ export type RoomFindUniqueOrThrowArgs<ExtArgs extends runtime.Types.Extensions.I
    */
   omit?: Prisma.RoomOmit<ExtArgs> | null
   /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.RoomInclude<ExtArgs> | null
+  /**
    * Filter, which Room to fetch.
    */
   where: Prisma.RoomWhereUniqueInput
@@ -890,6 +1159,10 @@ export type RoomFindFirstArgs<ExtArgs extends runtime.Types.Extensions.InternalA
    * Omit specific fields from the Room
    */
   omit?: Prisma.RoomOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.RoomInclude<ExtArgs> | null
   /**
    * Filter, which Room to fetch.
    */
@@ -939,6 +1212,10 @@ export type RoomFindFirstOrThrowArgs<ExtArgs extends runtime.Types.Extensions.In
    */
   omit?: Prisma.RoomOmit<ExtArgs> | null
   /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.RoomInclude<ExtArgs> | null
+  /**
    * Filter, which Room to fetch.
    */
   where?: Prisma.RoomWhereInput
@@ -986,6 +1263,10 @@ export type RoomFindManyArgs<ExtArgs extends runtime.Types.Extensions.InternalAr
    * Omit specific fields from the Room
    */
   omit?: Prisma.RoomOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.RoomInclude<ExtArgs> | null
   /**
    * Filter, which Rooms to fetch.
    */
@@ -1035,6 +1316,10 @@ export type RoomCreateArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs
    */
   omit?: Prisma.RoomOmit<ExtArgs> | null
   /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.RoomInclude<ExtArgs> | null
+  /**
    * The data needed to create a Room.
    */
   data: Prisma.XOR<Prisma.RoomCreateInput, Prisma.RoomUncheckedCreateInput>
@@ -1068,6 +1353,10 @@ export type RoomCreateManyAndReturnArgs<ExtArgs extends runtime.Types.Extensions
    */
   data: Prisma.RoomCreateManyInput | Prisma.RoomCreateManyInput[]
   skipDuplicates?: boolean
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.RoomIncludeCreateManyAndReturn<ExtArgs> | null
 }
 
 /**
@@ -1082,6 +1371,10 @@ export type RoomUpdateArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs
    * Omit specific fields from the Room
    */
   omit?: Prisma.RoomOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.RoomInclude<ExtArgs> | null
   /**
    * The data needed to update a Room.
    */
@@ -1134,6 +1427,10 @@ export type RoomUpdateManyAndReturnArgs<ExtArgs extends runtime.Types.Extensions
    * Limit how many Rooms to update.
    */
   limit?: number
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.RoomIncludeUpdateManyAndReturn<ExtArgs> | null
 }
 
 /**
@@ -1148,6 +1445,10 @@ export type RoomUpsertArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs
    * Omit specific fields from the Room
    */
   omit?: Prisma.RoomOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.RoomInclude<ExtArgs> | null
   /**
    * The filter to search for the Room to update in case it exists.
    */
@@ -1175,6 +1476,10 @@ export type RoomDeleteArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs
    */
   omit?: Prisma.RoomOmit<ExtArgs> | null
   /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.RoomInclude<ExtArgs> | null
+  /**
    * Filter which Room to delete.
    */
   where: Prisma.RoomWhereUniqueInput
@@ -1195,6 +1500,30 @@ export type RoomDeleteManyArgs<ExtArgs extends runtime.Types.Extensions.Internal
 }
 
 /**
+ * Room.players
+ */
+export type Room$playersArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the RoomPlayer
+   */
+  select?: Prisma.RoomPlayerSelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the RoomPlayer
+   */
+  omit?: Prisma.RoomPlayerOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.RoomPlayerInclude<ExtArgs> | null
+  where?: Prisma.RoomPlayerWhereInput
+  orderBy?: Prisma.RoomPlayerOrderByWithRelationInput | Prisma.RoomPlayerOrderByWithRelationInput[]
+  cursor?: Prisma.RoomPlayerWhereUniqueInput
+  take?: number
+  skip?: number
+  distinct?: Prisma.RoomPlayerScalarFieldEnum | Prisma.RoomPlayerScalarFieldEnum[]
+}
+
+/**
  * Room without action
  */
 export type RoomDefaultArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
@@ -1206,4 +1535,8 @@ export type RoomDefaultArgs<ExtArgs extends runtime.Types.Extensions.InternalArg
    * Omit specific fields from the Room
    */
   omit?: Prisma.RoomOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.RoomInclude<ExtArgs> | null
 }

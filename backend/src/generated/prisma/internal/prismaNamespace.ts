@@ -398,7 +398,8 @@ type FieldRefInputType<Model, FieldType> = Model extends never ? never : FieldRe
 
 export const ModelName = {
   User: 'User',
-  Room: 'Room'
+  Room: 'Room',
+  RoomPlayer: 'RoomPlayer'
 } as const
 
 export type ModelName = (typeof ModelName)[keyof typeof ModelName]
@@ -414,7 +415,7 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
     omit: GlobalOmitOptions
   }
   meta: {
-    modelProps: "user" | "room"
+    modelProps: "user" | "room" | "roomPlayer"
     txIsolationLevel: TransactionIsolationLevel
   }
   model: {
@@ -566,6 +567,80 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
         }
       }
     }
+    RoomPlayer: {
+      payload: Prisma.$RoomPlayerPayload<ExtArgs>
+      fields: Prisma.RoomPlayerFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.RoomPlayerFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$RoomPlayerPayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.RoomPlayerFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$RoomPlayerPayload>
+        }
+        findFirst: {
+          args: Prisma.RoomPlayerFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$RoomPlayerPayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.RoomPlayerFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$RoomPlayerPayload>
+        }
+        findMany: {
+          args: Prisma.RoomPlayerFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$RoomPlayerPayload>[]
+        }
+        create: {
+          args: Prisma.RoomPlayerCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$RoomPlayerPayload>
+        }
+        createMany: {
+          args: Prisma.RoomPlayerCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.RoomPlayerCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$RoomPlayerPayload>[]
+        }
+        delete: {
+          args: Prisma.RoomPlayerDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$RoomPlayerPayload>
+        }
+        update: {
+          args: Prisma.RoomPlayerUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$RoomPlayerPayload>
+        }
+        deleteMany: {
+          args: Prisma.RoomPlayerDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.RoomPlayerUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.RoomPlayerUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$RoomPlayerPayload>[]
+        }
+        upsert: {
+          args: Prisma.RoomPlayerUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$RoomPlayerPayload>
+        }
+        aggregate: {
+          args: Prisma.RoomPlayerAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregateRoomPlayer>
+        }
+        groupBy: {
+          args: Prisma.RoomPlayerGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.RoomPlayerGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.RoomPlayerCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.RoomPlayerCountAggregateOutputType> | number
+        }
+      }
+    }
   }
 } & {
   other: {
@@ -617,13 +692,24 @@ export type UserScalarFieldEnum = (typeof UserScalarFieldEnum)[keyof typeof User
 
 export const RoomScalarFieldEnum = {
   room_id: 'room_id',
-  host: 'host',
+  host_id: 'host_id',
   status: 'status',
   max_players: 'max_players',
   cur_players: 'cur_players'
 } as const
 
 export type RoomScalarFieldEnum = (typeof RoomScalarFieldEnum)[keyof typeof RoomScalarFieldEnum]
+
+
+export const RoomPlayerScalarFieldEnum = {
+  id: 'id',
+  user_id: 'user_id',
+  room_id: 'room_id',
+  joined_at: 'joined_at',
+  is_ready: 'is_ready'
+} as const
+
+export type RoomPlayerScalarFieldEnum = (typeof RoomPlayerScalarFieldEnum)[keyof typeof RoomPlayerScalarFieldEnum]
 
 
 export const SortOrder = {
@@ -687,6 +773,27 @@ export type EnumRoomStatusFieldRefInput<$PrismaModel> = FieldRefInputType<$Prism
  * Reference to a field of type 'RoomStatus[]'
  */
 export type ListEnumRoomStatusFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'RoomStatus[]'>
+    
+
+
+/**
+ * Reference to a field of type 'DateTime'
+ */
+export type DateTimeFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'DateTime'>
+    
+
+
+/**
+ * Reference to a field of type 'DateTime[]'
+ */
+export type ListDateTimeFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'DateTime[]'>
+    
+
+
+/**
+ * Reference to a field of type 'Boolean'
+ */
+export type BooleanFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'Boolean'>
     
 
 
@@ -856,6 +963,7 @@ export type PrismaClientOptions = PrismaClientOptionsWithAccelerateUrl | PrismaC
 export type GlobalOmitConfig = {
   user?: Prisma.UserOmit
   room?: Prisma.RoomOmit
+  roomPlayer?: Prisma.RoomPlayerOmit
 }
 
 /* Types for Logging */
