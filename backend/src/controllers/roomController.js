@@ -36,3 +36,31 @@ export async function createRoom(req, res){
 
     return res.status(400).json({ message: "Failed to create room" });
 }
+
+export async function joinRoom(req, res) {
+    const { roomCode } = req.body;
+    const userId = req.user.id;
+
+    try{
+        const room = await prisma.room.findUnique({
+            where: { room_id: roomCode }
+        });
+
+        if (!room) {
+            return res.status(404).json({ message: "Room not found" });
+        }
+
+        if (room.cur_players >= room.max_players) {
+            return res.status(400).json({ message: "Room is full" });
+        }
+
+        await prisma.room.update({
+            where: { room_id: roomCode },
+            data: { cur_players: { increment: 1 } }
+        });
+        return res.status(200).json({ message: "Successfully joined room" });
+    } catch (error) {
+        console.error("Error joining room:", error);
+        return res.status(500).json({ message: "Internal server error" });  
+    }
+}

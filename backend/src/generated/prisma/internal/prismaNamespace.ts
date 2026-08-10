@@ -619,7 +619,8 @@ export const RoomScalarFieldEnum = {
   room_id: 'room_id',
   host: 'host',
   status: 'status',
-  max_players: 'max_players'
+  max_players: 'max_players',
+  cur_players: 'cur_players'
 } as const
 
 export type RoomScalarFieldEnum = (typeof RoomScalarFieldEnum)[keyof typeof RoomScalarFieldEnum]

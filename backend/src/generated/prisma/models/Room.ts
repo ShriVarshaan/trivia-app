@@ -29,11 +29,13 @@ export type AggregateRoom = {
 export type RoomAvgAggregateOutputType = {
   host: number | null
   max_players: number | null
+  cur_players: number | null
 }
 
 export type RoomSumAggregateOutputType = {
   host: number | null
   max_players: number | null
+  cur_players: number | null
 }
 
 export type RoomMinAggregateOutputType = {
@@ -41,6 +43,7 @@ export type RoomMinAggregateOutputType = {
   host: number | null
   status: $Enums.RoomStatus | null
   max_players: number | null
+  cur_players: number | null
 }
 
 export type RoomMaxAggregateOutputType = {
@@ -48,6 +51,7 @@ export type RoomMaxAggregateOutputType = {
   host: number | null
   status: $Enums.RoomStatus | null
   max_players: number | null
+  cur_players: number | null
 }
 
 export type RoomCountAggregateOutputType = {
@@ -55,6 +59,7 @@ export type RoomCountAggregateOutputType = {
   host: number
   status: number
   max_players: number
+  cur_players: number
   _all: number
 }
 
@@ -62,11 +67,13 @@ export type RoomCountAggregateOutputType = {
 export type RoomAvgAggregateInputType = {
   host?: true
   max_players?: true
+  cur_players?: true
 }
 
 export type RoomSumAggregateInputType = {
   host?: true
   max_players?: true
+  cur_players?: true
 }
 
 export type RoomMinAggregateInputType = {
@@ -74,6 +81,7 @@ export type RoomMinAggregateInputType = {
   host?: true
   status?: true
   max_players?: true
+  cur_players?: true
 }
 
 export type RoomMaxAggregateInputType = {
@@ -81,6 +89,7 @@ export type RoomMaxAggregateInputType = {
   host?: true
   status?: true
   max_players?: true
+  cur_players?: true
 }
 
 export type RoomCountAggregateInputType = {
@@ -88,6 +97,7 @@ export type RoomCountAggregateInputType = {
   host?: true
   status?: true
   max_players?: true
+  cur_players?: true
   _all?: true
 }
 
@@ -182,6 +192,7 @@ export type RoomGroupByOutputType = {
   host: number
   status: $Enums.RoomStatus
   max_players: number
+  cur_players: number
   _count: RoomCountAggregateOutputType | null
   _avg: RoomAvgAggregateOutputType | null
   _sum: RoomSumAggregateOutputType | null
@@ -212,6 +223,7 @@ export type RoomWhereInput = {
   host?: Prisma.IntFilter<"Room"> | number
   status?: Prisma.EnumRoomStatusFilter<"Room"> | $Enums.RoomStatus
   max_players?: Prisma.IntFilter<"Room"> | number
+  cur_players?: Prisma.IntFilter<"Room"> | number
 }
 
 export type RoomOrderByWithRelationInput = {
@@ -219,6 +231,7 @@ export type RoomOrderByWithRelationInput = {
   host?: Prisma.SortOrder
   status?: Prisma.SortOrder
   max_players?: Prisma.SortOrder
+  cur_players?: Prisma.SortOrder
 }
 
 export type RoomWhereUniqueInput = Prisma.AtLeast<{
@@ -229,6 +242,7 @@ export type RoomWhereUniqueInput = Prisma.AtLeast<{
   host?: Prisma.IntFilter<"Room"> | number
   status?: Prisma.EnumRoomStatusFilter<"Room"> | $Enums.RoomStatus
   max_players?: Prisma.IntFilter<"Room"> | number
+  cur_players?: Prisma.IntFilter<"Room"> | number
 }, "room_id">
 
 export type RoomOrderByWithAggregationInput = {
@@ -236,6 +250,7 @@ export type RoomOrderByWithAggregationInput = {
   host?: Prisma.SortOrder
   status?: Prisma.SortOrder
   max_players?: Prisma.SortOrder
+  cur_players?: Prisma.SortOrder
   _count?: Prisma.RoomCountOrderByAggregateInput
   _avg?: Prisma.RoomAvgOrderByAggregateInput
   _max?: Prisma.RoomMaxOrderByAggregateInput
@@ -251,6 +266,7 @@ export type RoomScalarWhereWithAggregatesInput = {
   host?: Prisma.IntWithAggregatesFilter<"Room"> | number
   status?: Prisma.EnumRoomStatusWithAggregatesFilter<"Room"> | $Enums.RoomStatus
   max_players?: Prisma.IntWithAggregatesFilter<"Room"> | number
+  cur_players?: Prisma.IntWithAggregatesFilter<"Room"> | number
 }
 
 export type RoomCreateInput = {
@@ -258,6 +274,7 @@ export type RoomCreateInput = {
   host: number
   status?: $Enums.RoomStatus
   max_players?: number
+  cur_players?: number
 }
 
 export type RoomUncheckedCreateInput = {
@@ -265,6 +282,7 @@ export type RoomUncheckedCreateInput = {
   host: number
   status?: $Enums.RoomStatus
   max_players?: number
+  cur_players?: number
 }
 
 export type RoomUpdateInput = {
@@ -272,6 +290,7 @@ export type RoomUpdateInput = {
   host?: Prisma.IntFieldUpdateOperationsInput | number
   status?: Prisma.EnumRoomStatusFieldUpdateOperationsInput | $Enums.RoomStatus
   max_players?: Prisma.IntFieldUpdateOperationsInput | number
+  cur_players?: Prisma.IntFieldUpdateOperationsInput | number
 }
 
 export type RoomUncheckedUpdateInput = {
@@ -279,6 +298,7 @@ export type RoomUncheckedUpdateInput = {
   host?: Prisma.IntFieldUpdateOperationsInput | number
   status?: Prisma.EnumRoomStatusFieldUpdateOperationsInput | $Enums.RoomStatus
   max_players?: Prisma.IntFieldUpdateOperationsInput | number
+  cur_players?: Prisma.IntFieldUpdateOperationsInput | number
 }
 
 export type RoomCreateManyInput = {
@@ -286,6 +306,7 @@ export type RoomCreateManyInput = {
   host: number
   status?: $Enums.RoomStatus
   max_players?: number
+  cur_players?: number
 }
 
 export type RoomUpdateManyMutationInput = {
@@ -293,6 +314,7 @@ export type RoomUpdateManyMutationInput = {
   host?: Prisma.IntFieldUpdateOperationsInput | number
   status?: Prisma.EnumRoomStatusFieldUpdateOperationsInput | $Enums.RoomStatus
   max_players?: Prisma.IntFieldUpdateOperationsInput | number
+  cur_players?: Prisma.IntFieldUpdateOperationsInput | number
 }
 
 export type RoomUncheckedUpdateManyInput = {
@@ -300,6 +322,7 @@ export type RoomUncheckedUpdateManyInput = {
   host?: Prisma.IntFieldUpdateOperationsInput | number
   status?: Prisma.EnumRoomStatusFieldUpdateOperationsInput | $Enums.RoomStatus
   max_players?: Prisma.IntFieldUpdateOperationsInput | number
+  cur_players?: Prisma.IntFieldUpdateOperationsInput | number
 }
 
 export type RoomCountOrderByAggregateInput = {
@@ -307,11 +330,13 @@ export type RoomCountOrderByAggregateInput = {
   host?: Prisma.SortOrder
   status?: Prisma.SortOrder
   max_players?: Prisma.SortOrder
+  cur_players?: Prisma.SortOrder
 }
 
 export type RoomAvgOrderByAggregateInput = {
   host?: Prisma.SortOrder
   max_players?: Prisma.SortOrder
+  cur_players?: Prisma.SortOrder
 }
 
 export type RoomMaxOrderByAggregateInput = {
@@ -319,6 +344,7 @@ export type RoomMaxOrderByAggregateInput = {
   host?: Prisma.SortOrder
   status?: Prisma.SortOrder
   max_players?: Prisma.SortOrder
+  cur_players?: Prisma.SortOrder
 }
 
 export type RoomMinOrderByAggregateInput = {
@@ -326,11 +352,13 @@ export type RoomMinOrderByAggregateInput = {
   host?: Prisma.SortOrder
   status?: Prisma.SortOrder
   max_players?: Prisma.SortOrder
+  cur_players?: Prisma.SortOrder
 }
 
 export type RoomSumOrderByAggregateInput = {
   host?: Prisma.SortOrder
   max_players?: Prisma.SortOrder
+  cur_players?: Prisma.SortOrder
 }
 
 export type EnumRoomStatusFieldUpdateOperationsInput = {
@@ -344,6 +372,7 @@ export type RoomSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = r
   host?: boolean
   status?: boolean
   max_players?: boolean
+  cur_players?: boolean
 }, ExtArgs["result"]["room"]>
 
 export type RoomSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
@@ -351,6 +380,7 @@ export type RoomSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Extensio
   host?: boolean
   status?: boolean
   max_players?: boolean
+  cur_players?: boolean
 }, ExtArgs["result"]["room"]>
 
 export type RoomSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
@@ -358,6 +388,7 @@ export type RoomSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Extensio
   host?: boolean
   status?: boolean
   max_players?: boolean
+  cur_players?: boolean
 }, ExtArgs["result"]["room"]>
 
 export type RoomSelectScalar = {
@@ -365,9 +396,10 @@ export type RoomSelectScalar = {
   host?: boolean
   status?: boolean
   max_players?: boolean
+  cur_players?: boolean
 }
 
-export type RoomOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"room_id" | "host" | "status" | "max_players", ExtArgs["result"]["room"]>
+export type RoomOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"room_id" | "host" | "status" | "max_players" | "cur_players", ExtArgs["result"]["room"]>
 
 export type $RoomPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   name: "Room"
@@ -377,6 +409,7 @@ export type $RoomPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs =
     host: number
     status: $Enums.RoomStatus
     max_players: number
+    cur_players: number
   }, ExtArgs["result"]["room"]>
   composites: {}
 }
@@ -804,6 +837,7 @@ export interface RoomFieldRefs {
   readonly host: Prisma.FieldRef<"Room", 'Int'>
   readonly status: Prisma.FieldRef<"Room", 'RoomStatus'>
   readonly max_players: Prisma.FieldRef<"Room", 'Int'>
+  readonly cur_players: Prisma.FieldRef<"Room", 'Int'>
 }
     
 
