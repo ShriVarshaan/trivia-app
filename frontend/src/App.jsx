@@ -7,6 +7,7 @@ import Signup from "./pages/Signup";
 import Home from "./pages/Home";
 import CreateRoom from "./pages/CreateRoom";
 import JoinRoom from "./pages/JoinRoom";
+import Room from "./pages/Room";
 
 const router = createBrowserRouter([
   {
@@ -28,17 +29,27 @@ const router = createBrowserRouter([
   {
     path: "/join-room",
     element: <JoinRoom />
+  },
+  {
+    path: "/room/:roomId",
+    element: <Room />
   }
 ]);
 
 export default function App(){
 
-  const { isAuthenticated, user } = useAuth();
+  const { isAuthenticated, user, token } = useAuth();
 
   useEffect(() => {
     if (isAuthenticated && user) {
       // Connect when authenticated
-      socket.connect();
+
+      socket.auth = { token };
+      socket.user = user;
+
+      if(!socket.connected){
+        socket.connect();
+      }
     } else {
       // Disconnect when logged out
       if (socket.connected) {
@@ -49,7 +60,7 @@ export default function App(){
     return () => {
       socket.disconnect();
     };
-  }, [isAuthenticated, user]);
+  }, [isAuthenticated, user?.id, token]);
 
   return (
     <RouterProvider router={router} />
