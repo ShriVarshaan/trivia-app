@@ -28,7 +28,7 @@ export function AuthProvider({ children }) {
     localStorage.setItem("token", token);
     localStorage.setItem("user", JSON.stringify(userData));
     axios.defaults.headers.common["Authorization"] = `Bearer ${token}`;
-    setToken(tokenData);
+    setToken(token);
     setUser(userData);
     setIsAuthenticated(true);
   };

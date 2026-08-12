@@ -5,6 +5,7 @@ import { useAuth } from "../context/AuthContext";
 
 export default function Room() {
   const { roomId } = useParams();
+  const [players, setPlayers] = useState([]);
   const { isAuthenticated, user } = useAuth();
   const navigate = useNavigate();
   
@@ -13,19 +14,16 @@ export default function Room() {
   useEffect(() => {
     if (!roomId) return;
 
-    // 1. Join the Socket.IO room channel
     socket.emit("join_room", roomId);
 
-    // 2. Define event handlers
-    const handleUserJoined = (data) => {
-      console.log("Notification:", data.message);
-    };
+    const handleRoomPlayers = (playerList) => setPlayers(playerList);
+    const handleUserJoined = (data) => console.log("Notification:", data.message);
 
-    // 3. Attach socket listeners
+    socket.on("room_players", handleRoomPlayers);
     socket.on("user_joined", handleUserJoined);
 
-    // 4. Cleanup on unmount or route change
     return () => {
+      socket.off("room_players", handleRoomPlayers);
       socket.off("user_joined", handleUserJoined);
       socket.emit("leave_room", roomId);
     };
@@ -39,6 +37,15 @@ export default function Room() {
     <div>
       <h1>Room ID: {roomId}</h1>
       <p>Welcome, {user?.username || "Player"}</p>
+
+      <h2>Players in Room:</h2>
+      <ul>
+        {players.map((player) => (
+          <li key={player.userId}>
+            {player.username} {player.isReady ? "(Ready)" : "(Not Ready)"}
+          </li>
+        ))}
+      </ul>
 
       <button onClick={handleLeaveRoom}>Leave Room</button>
     </div>
