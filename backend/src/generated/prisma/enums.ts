@@ -9,7 +9,10 @@
 * 🟢 You can import this file directly.
 */
 
+export const RoomStatus = {
+  waiting: 'waiting',
+  started: 'started',
+  finished: 'finished'
+} as const
 
-
-// This file is empty because there are no enums in the schema.
-export {}
+export type RoomStatus = (typeof RoomStatus)[keyof typeof RoomStatus]

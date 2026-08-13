@@ -13,6 +13,11 @@ function Home() {
             navigate("/login");
         }
     }, [isAuthenticated, navigate]);
+
+    if (!isAuthenticated || !user) {
+        return null;
+    }
+    
     return (
         <div>
             <h1>Welcome to the Trivia App { user.username } !</h1>

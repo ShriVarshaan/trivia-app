@@ -6,6 +6,7 @@ const AuthContext = createContext(null);
 export function AuthProvider({ children }) {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [user, setUser] = useState(null);
+  const [token, setToken] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -13,6 +14,7 @@ export function AuthProvider({ children }) {
     const storedUser = localStorage.getItem("user");
 
     if (token && storedUser) {
+      setToken(token);
       setIsAuthenticated(true);
       setUser(JSON.parse(storedUser));
 
@@ -26,6 +28,7 @@ export function AuthProvider({ children }) {
     localStorage.setItem("token", token);
     localStorage.setItem("user", JSON.stringify(userData));
     axios.defaults.headers.common["Authorization"] = `Bearer ${token}`;
+    setToken(token);
     setUser(userData);
     setIsAuthenticated(true);
   };
@@ -34,12 +37,13 @@ export function AuthProvider({ children }) {
     localStorage.removeItem("token");
     localStorage.removeItem("user");
     delete axios.defaults.headers.common["Authorization"];
+    setToken(null);
     setUser(null);
     setIsAuthenticated(false);
   };
 
   return (
-    <AuthContext.Provider value={{ isAuthenticated, user, loading, login, logout }}>
+    <AuthContext.Provider value={{ isAuthenticated, user, token, loading, login, logout }}>
       {!loading && children}
     </AuthContext.Provider>
   );

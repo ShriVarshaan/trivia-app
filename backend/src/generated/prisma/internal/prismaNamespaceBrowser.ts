@@ -51,7 +51,9 @@ export const AnyNull = runtime.AnyNull
 
 
 export const ModelName = {
-  User: 'User'
+  User: 'User',
+  Room: 'Room',
+  RoomPlayer: 'RoomPlayer'
 } as const
 
 export type ModelName = (typeof ModelName)[keyof typeof ModelName]
@@ -78,6 +80,28 @@ export const UserScalarFieldEnum = {
 } as const
 
 export type UserScalarFieldEnum = (typeof UserScalarFieldEnum)[keyof typeof UserScalarFieldEnum]
+
+
+export const RoomScalarFieldEnum = {
+  room_id: 'room_id',
+  host_id: 'host_id',
+  status: 'status',
+  max_players: 'max_players',
+  cur_players: 'cur_players'
+} as const
+
+export type RoomScalarFieldEnum = (typeof RoomScalarFieldEnum)[keyof typeof RoomScalarFieldEnum]
+
+
+export const RoomPlayerScalarFieldEnum = {
+  id: 'id',
+  user_id: 'user_id',
+  room_id: 'room_id',
+  joined_at: 'joined_at',
+  is_ready: 'is_ready'
+} as const
+
+export type RoomPlayerScalarFieldEnum = (typeof RoomPlayerScalarFieldEnum)[keyof typeof RoomPlayerScalarFieldEnum]
 
 
 export const SortOrder = {
