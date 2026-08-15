@@ -192,11 +192,24 @@ export function registerRoomHandlers (io, socket) {
   socket.on("join_room", async (roomId) => {
 
     try {
-      const existingPlayer = await prisma.roomPlayer.findUnique({
-        where: {
-          user_id_room_id: { user_id: userId, room_id: roomId }
-        }
+      const currentMembership = await prisma.roomPlayer.findFirst({
+        where: { user_id: userId },
+        orderBy: { joined_at: "desc" }
       });
+
+      if (currentMembership && currentMembership.room_id !== roomId) {
+        socket.emit("room_error", { message: "You are already in another room. Leave it before joining a new one." });
+        return;
+      }
+
+      const existingPlayer = await prisma.roomPlayer.findUnique({
+        where: { user_id: userId }
+      });
+
+      if (existingPlayer && existingPlayer.room_id !== roomId) {
+        socket.emit("room_error", { message: "You are already in another room. Leave it before joining a new one." });
+        return;
+      }
 
       if (existingPlayer) {
         socket.join(roomId);
@@ -321,15 +334,18 @@ export function registerRoomHandlers (io, socket) {
       }
 
       if (room.status === "started") {
+        const totalDurationMs = await getRoomDurationMs(roomId);
+
         io.to(roomId).emit("game_started", { roomId: room.room_id });
         io.to(roomId).emit("room_state", {
           roomId: room.room_id,
           hostId: room.host_id,
-          status: room.status
+          status: room.status,
+          durationSeconds: room.duration_seconds ?? 120
         });
         io.to(roomId).emit("room_timer", {
           roomId: room.room_id,
-          totalMs: ROOM_DURATION_MS,
+          totalMs: totalDurationMs,
           remainingMs: getRoomRemainingMs(roomId)
         });
         return;

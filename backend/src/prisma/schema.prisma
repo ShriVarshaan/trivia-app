@@ -42,7 +42,7 @@ model Room {
 
 model RoomPlayer {
   id        Int      @id @default(autoincrement())
-  user_id   Int
+  user_id   Int      @unique
   room_id   String   @db.Char(6)
   joined_at DateTime @default(now())
   is_ready  Boolean  @default(false)
@@ -50,5 +50,5 @@ model RoomPlayer {
   user      User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
   room      Room     @relation(fields: [room_id], references: [room_id], onDelete: Cascade)
 
-  @@unique([user_id, room_id])
+  @@index([room_id])
 }

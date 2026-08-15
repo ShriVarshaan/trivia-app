@@ -2,6 +2,17 @@ import {prisma} from "../config/prisma.js"
 import { customAlphabet } from 'nanoid';
 
 export async function createRoom(req, res){
+    const userId = req.user.id;
+
+    const activeMembership = await prisma.roomPlayer.findFirst({
+        where: { user_id: userId },
+        orderBy: { joined_at: "desc" }
+    });
+
+    if (activeMembership) {
+        return res.status(400).json({ message: "You are already in a room. Leave it before creating a new one." });
+    }
+
     let attempts = 0;
     const attemptLimit = 5;
     const generateCode = customAlphabet('23456789ABCDEFGHJKLMNPQRSTUVWXYZ', 6);
@@ -68,6 +79,19 @@ export async function joinRoom(req, res) {
     }
 
     try {
+        const existingMembership = await prisma.roomPlayer.findFirst({
+            where: { user_id: userId },
+            orderBy: { joined_at: "desc" }
+        });
+
+        if (existingMembership && existingMembership.room_id !== roomCode) {
+            return res.status(400).json({ message: "You are already in another room. Leave it before joining a new one." });
+        }
+
+        if (existingMembership && existingMembership.room_id === roomCode) {
+            return res.status(400).json({ message: "User is already in this room" });
+        }
+
         // Atomic transaction to check room capacity, create RoomPlayer, and increment count
         const result = await prisma.$transaction(async (tx) => {
             const room = await tx.room.findUnique({
