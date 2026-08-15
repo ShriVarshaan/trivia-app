@@ -5,7 +5,8 @@ export async function createRoom(req, res){
     let attempts = 0;
     const attemptLimit = 5;
     const generateCode = customAlphabet('23456789ABCDEFGHJKLMNPQRSTUVWXYZ', 6);
-    let maxPlayers = 2; // Default value if not provided
+    let maxPlayers = 2;
+    let durationSeconds = 120;
 
     while (attempts < attemptLimit) {
         const roomCode = generateCode();
@@ -13,12 +14,22 @@ export async function createRoom(req, res){
             where: { room_id: roomCode }
         });
 
-        if (req.body && req.body.maxPlayers) {
-            maxPlayers = parseInt(req.body.maxPlayers);
+        if (req.body) {
+            if (req.body.maxPlayers !== undefined) {
+                maxPlayers = parseInt(req.body.maxPlayers, 10);
+            }
+
+            if (req.body.durationSeconds !== undefined) {
+                durationSeconds = parseInt(req.body.durationSeconds, 10);
+            }
         }
 
         if (maxPlayers < 2 || maxPlayers > 10) {
             return res.status(400).json({ message: "Max players must be between 2 and 10" });
+        }
+
+        if (!Number.isInteger(durationSeconds) || durationSeconds < 120 || durationSeconds > 600 || durationSeconds % 15 !== 0) {
+            return res.status(400).json({ message: "Room duration must be between 2 and 10 minutes in 15 second increments" });
         }
 
         if (!existingRoom) {
@@ -28,10 +39,11 @@ export async function createRoom(req, res){
                     host_id: req.user.id,
                     max_players: maxPlayers,
                     cur_players: 1,
+                    duration_seconds: durationSeconds,
                     players: {
                         create: {
                         user_id: req.user.id,
-                        is_ready: true // Host can default to ready
+                        is_ready: true
                         }
                     }
                 },
