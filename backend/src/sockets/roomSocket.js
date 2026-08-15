@@ -109,6 +109,66 @@ function startRoomTimer(io, roomId, hostId) {
   });
 }
 
+async function refreshRoomCount(roomId) {
+  const currentCount = await prisma.roomPlayer.count({
+    where: { room_id: roomId }
+  });
+
+  await prisma.room.update({
+    where: { room_id: roomId },
+    data: { cur_players: currentCount }
+  });
+
+  return currentCount;
+}
+
+async function transferHostIfNeeded(io, roomId, departingUserId, options = {}) {
+  const { explicitLeave = false } = options;
+  const room = await prisma.room.findUnique({
+    where: { room_id: roomId },
+    select: { room_id: true, host_id: true, status: true }
+  });
+
+  if (!room || room.host_id !== departingUserId) {
+    return;
+  }
+
+  const remainingPlayers = await prisma.roomPlayer.findMany({
+    where: {
+      room_id: roomId,
+      user_id: { not: departingUserId }
+    },
+    orderBy: { joined_at: "asc" },
+    select: { user_id: true }
+  });
+
+  if (remainingPlayers.length > 0) {
+    const updatedRoom = await prisma.room.update({
+      where: { room_id: roomId },
+      data: { host_id: remainingPlayers[0].user_id }
+    });
+
+    io.to(roomId).emit("room_state", {
+      roomId: updatedRoom.room_id,
+      hostId: updatedRoom.host_id,
+      status: updatedRoom.status
+    });
+    return;
+  }
+
+  if (room.status === "started") {
+    endRoomTimer(io, roomId);
+    return;
+  }
+
+  if (explicitLeave) {
+    await prisma.room.update({
+      where: { room_id: roomId },
+      data: { status: "waiting", cur_players: 0 }
+    });
+  }
+}
+
 export function registerRoomHandlers (io, socket) {
 
   const userId = socket.user?.id;
@@ -121,16 +181,77 @@ export function registerRoomHandlers (io, socket) {
   socket.on("join_room", async (roomId) => {
 
     try {
-      socket.join(roomId);
-
-      await prisma.roomPlayer.upsert({
+      const existingPlayer = await prisma.roomPlayer.findUnique({
         where: {
           user_id_room_id: { user_id: userId, room_id: roomId }
-        },
-        update: {},
-        create: { user_id: userId, room_id: roomId }
+        }
       });
 
+      if (existingPlayer) {
+        socket.join(roomId);
+
+        const roomState = await getRoomState(roomId);
+        if (roomState) {
+          socket.emit("room_state", roomState);
+
+          if (roomState.status === "started") {
+            socket.emit("game_started", { roomId: roomState.roomId });
+            socket.emit("room_timer", {
+              roomId: roomState.roomId,
+              totalMs: ROOM_DURATION_MS,
+              remainingMs: getRoomRemainingMs(roomId)
+            });
+          }
+        }
+
+        const players = await getRoomPlayers(roomId);
+        io.to(roomId).emit("room_players", players);
+        return;
+      }
+
+      await prisma.$transaction(async (tx) => {
+        const room = await tx.room.findUnique({
+          where: { room_id: roomId },
+          select: { room_id: true, max_players: true, cur_players: true, host_id: true }
+        });
+
+        if (!room) {
+          throw new Error("ROOM_NOT_FOUND");
+        }
+
+        const currentCount = await tx.roomPlayer.count({
+          where: { room_id: roomId }
+        });
+
+        if (currentCount >= room.max_players) {
+          throw new Error("ROOM_FULL");
+        }
+
+        await tx.roomPlayer.create({
+          data: { user_id: userId, room_id: roomId }
+        });
+
+        const roomHostStillExists = await tx.roomPlayer.findFirst({
+          where: {
+            room_id: roomId,
+            user_id: room.host_id
+          }
+        });
+
+        if (!roomHostStillExists) {
+          await tx.room.update({
+            where: { room_id: roomId },
+            data: { host_id: userId }
+          });
+        }
+
+        await tx.room.update({
+          where: { room_id: roomId },
+          data: { cur_players: currentCount + 1 }
+        });
+      });
+
+      socket.join(roomId);
       console.log(`User ${username} (${socket.id}) joined room: ${roomId}`);
 
       const roomState = await getRoomState(roomId);
@@ -149,8 +270,24 @@ export function registerRoomHandlers (io, socket) {
 
       const players = await getRoomPlayers(roomId);
       io.to(roomId).emit("room_players", players);
-  } catch(error) {
+    } catch (error) {
+      if (error.message === "ROOM_NOT_FOUND") {
+        socket.emit("room_error", { message: "Room not found." });
+        return;
+      }
+
+      if (error.message === "ROOM_FULL") {
+        socket.emit("room_error", { message: "Room is full" });
+        return;
+      }
+
+      if (error.code === "P2003") {
+        socket.emit("room_error", { message: "Room not found." });
+        return;
+      }
+
       console.error("Error joining room:", error);
+      socket.emit("room_error", { message: "Unable to join room." });
     }
   });
 
@@ -215,12 +352,21 @@ export function registerRoomHandlers (io, socket) {
       socket.leave(roomId);
       console.log(`User ${username} (${socket.id}) left room: ${roomId}`);
 
-      await prisma.roomPlayer.deleteMany({
+      const deleted = await prisma.roomPlayer.deleteMany({
         where: { user_id: userId, room_id: roomId }
       });
 
+      if (deleted.count > 0) {
+        await refreshRoomCount(roomId);
+        await transferHostIfNeeded(io, roomId, userId, { explicitLeave: true });
+      }
+
       const players = await getRoomPlayers(roomId);
       io.to(roomId).emit("room_players", players);
+      const roomState = await getRoomState(roomId);
+      if (roomState) {
+        io.to(roomId).emit("room_state", roomState);
+      }
   } catch (error) {
     console.error("Error leaving room:", error);
   }
@@ -229,21 +375,29 @@ export function registerRoomHandlers (io, socket) {
   socket.on("disconnect", async () => {
     try{
       console.log(`User ${username} (${socket.id}) disconnected`);
-      
-      // Find rooms this user was in to emit updates to remaining players
+
       const userRooms = await prisma.roomPlayer.findMany({
         where: { user_id: userId },
         select: { room_id: true }
       });
 
-      // Remove user from all rooms in the database
-      await prisma.roomPlayer.deleteMany({
-        where: { user_id: userId }
-      });
-
       for (const { room_id } of userRooms) {
+        const deleted = await prisma.roomPlayer.deleteMany({
+          where: { user_id: userId, room_id }
+        });
+
+        if (deleted.count > 0) {
+          await refreshRoomCount(room_id);
+          await transferHostIfNeeded(io, room_id, userId);
+        }
+
         const players = await getRoomPlayers(room_id);
         io.to(room_id).emit("room_players", players);
+
+        const roomState = await getRoomState(room_id);
+        if (roomState) {
+          io.to(room_id).emit("room_state", roomState);
+        }
       }
   } catch (error) {
     console.error("Error handling disconnect:", error);

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { socket } from "../config/socket";
 import { useAuth } from "../context/AuthContext";
@@ -19,11 +19,15 @@ export default function Room() {
   const [timeLeftMs, setTimeLeftMs] = useState(0);
   const { user } = useAuth();
   const navigate = useNavigate();
+  const joinedRoomRef = useRef(false);
 
   useEffect(() => {
     if (!roomId) return;
 
-    socket.emit("join_room", roomId);
+    if (!joinedRoomRef.current) {
+      socket.emit("join_room", roomId);
+      joinedRoomRef.current = true;
+    }
 
     const handleRoomPlayers = (playerList) => setPlayers(playerList);
     const handleRoomState = (roomState) => {
@@ -63,7 +67,11 @@ export default function Room() {
       socket.off("game_started", handleGameStarted);
       socket.off("game_ended", handleGameEnded);
       socket.off("room_error", handleRoomError);
-      socket.emit("leave_room", roomId);
+
+      if (joinedRoomRef.current) {
+        socket.emit("leave_room", roomId);
+        joinedRoomRef.current = false;
+      }
     };
   }, [roomId, user?.id, navigate]);
 
