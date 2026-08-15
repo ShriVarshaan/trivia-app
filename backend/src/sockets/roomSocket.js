@@ -1,5 +1,8 @@
 import { prisma } from "../config/prisma.js";
 
+const ROOM_DURATION_MS = 2 * 60 * 1000;
+const roomTimers = new Map();
+
 async function getRoomPlayers(roomId) {
   try {
     const rows = await prisma.roomPlayer.findMany({
@@ -39,6 +42,73 @@ async function getRoomState(roomId) {
   }
 }
 
+function getRoomRemainingMs(roomId) {
+  const timer = roomTimers.get(roomId);
+
+  if (!timer) {
+    return 0;
+  }
+
+  return Math.max(0, timer.endsAt - Date.now());
+}
+
+function endRoomTimer(io, roomId) {
+  const timer = roomTimers.get(roomId);
+
+  if (timer?.intervalId) {
+    clearInterval(timer.intervalId);
+  }
+
+  roomTimers.delete(roomId);
+
+  prisma.room
+    .update({
+      where: { room_id: roomId },
+      data: { status: "finished" }
+    })
+    .catch((error) => {
+      console.error(`Error finishing room ${roomId}:`, error);
+    });
+
+  io.to(roomId).emit("room_state", {
+    roomId,
+    status: "finished",
+    hostId: timer?.hostId ?? null
+  });
+  io.to(roomId).emit("game_ended", { roomId });
+}
+
+function startRoomTimer(io, roomId, hostId) {
+  const existingTimer = roomTimers.get(roomId);
+
+  if (existingTimer?.intervalId) {
+    clearInterval(existingTimer.intervalId);
+  }
+
+  const endsAt = Date.now() + ROOM_DURATION_MS;
+  const intervalId = setInterval(() => {
+    const remainingMs = Math.max(0, endsAt - Date.now());
+
+    io.to(roomId).emit("room_timer", {
+      roomId,
+      totalMs: ROOM_DURATION_MS,
+      remainingMs
+    });
+
+    if (remainingMs <= 0) {
+      endRoomTimer(io, roomId);
+    }
+  }, 1000);
+
+  roomTimers.set(roomId, { hostId, endsAt, intervalId });
+
+  io.to(roomId).emit("room_timer", {
+    roomId,
+    totalMs: ROOM_DURATION_MS,
+    remainingMs: ROOM_DURATION_MS
+  });
+}
+
 export function registerRoomHandlers (io, socket) {
 
   const userId = socket.user?.id;
@@ -69,6 +139,11 @@ export function registerRoomHandlers (io, socket) {
 
         if (roomState.status === "started") {
           socket.emit("game_started", { roomId: roomState.roomId });
+          socket.emit("room_timer", {
+            roomId: roomState.roomId,
+            totalMs: ROOM_DURATION_MS,
+            remainingMs: getRoomRemainingMs(roomId)
+          });
         }
       }
 
@@ -103,6 +178,11 @@ export function registerRoomHandlers (io, socket) {
           hostId: room.host_id,
           status: room.status
         });
+        io.to(roomId).emit("room_timer", {
+          roomId: room.room_id,
+          totalMs: ROOM_DURATION_MS,
+          remainingMs: getRoomRemainingMs(roomId)
+        });
         return;
       }
 
@@ -111,11 +191,18 @@ export function registerRoomHandlers (io, socket) {
         data: { status: "started" }
       });
 
+      startRoomTimer(io, roomId, userId);
+
       io.to(roomId).emit("game_started", { roomId: updatedRoom.room_id });
       io.to(roomId).emit("room_state", {
         roomId: updatedRoom.room_id,
         hostId: updatedRoom.host_id,
         status: updatedRoom.status
+      });
+      io.to(roomId).emit("room_timer", {
+        roomId: updatedRoom.room_id,
+        totalMs: ROOM_DURATION_MS,
+        remainingMs: ROOM_DURATION_MS
       });
     } catch (error) {
       console.error("Error starting game:", error);
