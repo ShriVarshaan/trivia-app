@@ -21,6 +21,7 @@ export default function Room() {
   const [selectedAnswer, setSelectedAnswer] = useState("");
   const [hasSubmittedAnswer, setHasSubmittedAnswer] = useState(false);
   const [isHost, setIsHost] = useState(false);
+  const [questionsReady, setQuestionsReady] = useState(false);
   const [gameStarted, setGameStarted] = useState(false);
   const [isLoadingGame, setIsLoadingGame] = useState(false);
   const [timeLeftMs, setTimeLeftMs] = useState(0);
@@ -39,6 +40,9 @@ export default function Room() {
     const handleRoomPlayers = (playerList) => setPlayers(playerList);
     const handleRoomState = (roomState) => {
       setIsHost(Number(roomState.hostId) === Number(user?.id));
+      if (roomState.questionsReady !== undefined) {
+        setQuestionsReady(Boolean(roomState.questionsReady));
+      }
       const started = roomState.status === "started";
       setGameStarted(started);
 
@@ -175,11 +179,35 @@ export default function Room() {
         </>
       ) : (
         <>
-          <p>{isHost ? "You are the host." : "Waiting for the host to start the game."}</p>
+          <p>
+            {isHost
+              ? "You are the host."
+              : !questionsReady
+              ? "Preparing trivia questions..."
+              : "Waiting for the host to start the game."}
+          </p>
           {isHost && (
-            <button onClick={handleStartGame} disabled={isLoadingGame}>
-              {isLoadingGame ? "Loading..." : "Start Game"}
-            </button>
+            <div>
+              <button
+                onClick={handleStartGame}
+                disabled={isLoadingGame || !questionsReady}
+                style={{
+                  opacity: (!questionsReady || isLoadingGame) ? 0.6 : 1,
+                  cursor: (!questionsReady || isLoadingGame) ? "not-allowed" : "pointer"
+                }}
+              >
+                {isLoadingGame
+                  ? "Starting..."
+                  : !questionsReady
+                  ? "Loading Questions..."
+                  : "Start Game"}
+              </button>
+              {!questionsReady && (
+                <p style={{ fontSize: "0.85em", color: "#666", marginTop: "4px" }}>
+                  Generating room questions, please wait...
+                </p>
+              )}
+            </div>
           )}
         </>
       )}

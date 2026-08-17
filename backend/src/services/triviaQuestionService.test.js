@@ -162,3 +162,39 @@ test('getOrCreateRoomQuestionSet reuses existing room questions instead of dupli
   assert.equal(payload[29].question, 'Existing question 30');
   assert.deepStrictEqual(createCalls, []);
 });
+
+test('getOrCreateRoomQuestionSet creates new room questions from gameQuestion pool when none exist', async () => {
+  const createCalls = [];
+  const roomId = 'new-room-456';
+  const gameQuestionPool = Array.from({ length: 35 }, (_, index) => ({
+    id: index + 1,
+    question: `Game Question ${index + 1}`,
+    category: 'General',
+    difficulty: 'medium',
+    correct_answer: 'Correct',
+    answers: ['Correct', 'Wrong 1', 'Wrong 2', 'Wrong 3']
+  }));
+
+  const prisma = {
+    room: {
+      findUnique: async () => ({ room_id: roomId, game_name: 'trivia', duration_seconds: 120 })
+    },
+    roomQuestion: {
+      findMany: async () => [],
+      create: async ({ data }) => {
+        createCalls.push(data);
+        return data;
+      }
+    },
+    gameQuestion: {
+      findMany: async () => gameQuestionPool
+    }
+  };
+
+  const payload = await getOrCreateRoomQuestionSet(prisma, roomId);
+
+  assert.equal(payload.length, 30);
+  assert.equal(createCalls.length, 30);
+  assert.equal(createCalls[0].room_id, roomId);
+});
+

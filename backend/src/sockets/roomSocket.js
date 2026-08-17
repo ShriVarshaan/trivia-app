@@ -1,5 +1,5 @@
 import { prisma } from "../config/prisma.js";
-import { getOrCreateRoomQuestionSet, shuffleAnswerOptions } from "../services/triviaQuestionService.js";
+import { getOrCreateRoomQuestionSet, getQuestionCountForDuration, shuffleAnswerOptions } from "../services/triviaQuestionService.js";
 
 const DEFAULT_ROOM_DURATION_MS = 2 * 60 * 1000;
 const roomTimers = new Map();
@@ -24,22 +24,28 @@ async function getRoomPlayers(roomId) {
   }
 }
 
-async function getRoomState(roomId) {
+export async function getRoomState(roomId) {
   try {
     const room = await prisma.room.findUnique({
       where: { room_id: roomId },
       select: { room_id: true, host_id: true, game_name: true, status: true, duration_seconds: true }
     });
 
-    return room
-      ? {
-          roomId: room.room_id,
-          hostId: room.host_id,
-          gameName: room.game_name ?? "trivia",
-          status: room.status,
-          durationSeconds: room.duration_seconds
-        }
-      : null;
+    if (!room) return null;
+
+    const questionCount = await prisma.roomQuestion.count({
+      where: { room_id: roomId }
+    });
+    const targetAmount = getQuestionCountForDuration(room.duration_seconds);
+
+    return {
+      roomId: room.room_id,
+      hostId: room.host_id,
+      gameName: room.game_name ?? "trivia",
+      status: room.status,
+      durationSeconds: room.duration_seconds,
+      questionsReady: questionCount >= targetAmount
+    };
   } catch (error) {
     console.error("Error fetching room state:", error);
     return null;

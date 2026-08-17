@@ -1,5 +1,7 @@
 import {prisma} from "../config/prisma.js"
 import { customAlphabet } from 'nanoid';
+import { getOrCreateRoomQuestionSet } from "../services/triviaQuestionService.js";
+import { getRoomState } from "../sockets/roomSocket.js";
 
 export async function createRoom(req, res){
     const userId = req.user.id;
@@ -64,6 +66,22 @@ export async function createRoom(req, res){
                     players: true
                 }
             });
+
+            // Asynchronously generate questions so room is shown to host immediately
+            const io = req.app.get("io");
+            getOrCreateRoomQuestionSet(prisma, newRoom.room_id)
+                .then(async () => {
+                    if (io) {
+                        const updatedRoomState = await getRoomState(newRoom.room_id);
+                        if (updatedRoomState) {
+                            io.to(newRoom.room_id).emit("room_state", updatedRoomState);
+                        }
+                    }
+                })
+                .catch((error) => {
+                    console.error("Error background generating questions for room:", error);
+                });
+
             return res.status(201).json({ message: "Room created successfully", room: newRoom });
         }
         attempts++;

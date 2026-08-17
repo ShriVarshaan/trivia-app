@@ -70,14 +70,26 @@ export function selectRandomQuestions(questionPool = [], amount = 10) {
     return [];
   }
 
-  const shuffled = [...questionPool];
+  const n = questionPool.length;
+  const count = Math.min(Math.max(0, amount), n);
+  if (count === 0) return [];
 
-  for (let index = shuffled.length - 1; index > 0; index -= 1) {
-    const swapIndex = Math.floor(Math.random() * (index + 1));
-    [shuffled[index], shuffled[swapIndex]] = [shuffled[swapIndex], shuffled[index]];
+  // When count is close to n, a partial clone shuffle is faster
+  if (count > n / 2) {
+    const pool = [...questionPool];
+    for (let i = 0; i < count; i += 1) {
+      const swapIndex = i + Math.floor(Math.random() * (n - i));
+      [pool[i], pool[swapIndex]] = [pool[swapIndex], pool[i]];
+    }
+    return pool.slice(0, count);
   }
 
-  return shuffled.slice(0, Math.min(amount, shuffled.length));
+  const selectedIndices = new Set();
+  while (selectedIndices.size < count) {
+    selectedIndices.add(Math.floor(Math.random() * n));
+  }
+
+  return Array.from(selectedIndices, (idx) => questionPool[idx]);
 }
 
 export function shuffleAnswerOptions(options = []) {
@@ -248,7 +260,7 @@ export async function getOrCreateRoomQuestionSet(prisma, roomId, { amount } = {}
     );
   }
 
-  const questionPool = await prisma.gameQuestion.findMany({
+  let questionPool = await prisma.gameQuestion.findMany({
     where: { game_name: room.game_name ?? DEFAULT_GAME_NAME },
     orderBy: { id: 'asc' },
     select: {
@@ -260,6 +272,29 @@ export async function getOrCreateRoomQuestionSet(prisma, roomId, { amount } = {}
       answers: true
     }
   });
+
+  if (questionPool.length < targetAmount) {
+    try {
+      const fetched = await fetchOpenTriviaQuestions({ amount: Math.max(targetAmount, 50) });
+      if (Array.isArray(fetched) && fetched.length > 0) {
+        await upsertTriviaQuestions(prisma, fetched);
+        questionPool = await prisma.gameQuestion.findMany({
+          where: { game_name: room.game_name ?? DEFAULT_GAME_NAME },
+          orderBy: { id: 'asc' },
+          select: {
+            id: true,
+            question: true,
+            category: true,
+            difficulty: true,
+            correct_answer: true,
+            answers: true
+          }
+        });
+      }
+    } catch (error) {
+      console.warn("Failed to auto-fetch questions from OpenTDB:", error.message);
+    }
+  }
 
   if (questionPool.length === 0) {
     throw new Error('NO_QUESTIONS_AVAILABLE');
