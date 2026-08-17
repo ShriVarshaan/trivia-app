@@ -73,6 +73,17 @@ export function selectRandomQuestions(questionPool = [], amount = 10) {
   return shuffled.slice(0, Math.min(amount, shuffled.length));
 }
 
+export function shuffleAnswerOptions(options = []) {
+  const answers = [...options];
+
+  for (let index = answers.length - 1; index > 0; index -= 1) {
+    const swapIndex = Math.floor(Math.random() * (index + 1));
+    [answers[index], answers[swapIndex]] = [answers[swapIndex], answers[index]];
+  }
+
+  return answers;
+}
+
 export function buildSourceHash(question) {
   const serialized = JSON.stringify({
     question: question.question,

@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { normalizeOpenTriviaQuestion, buildRoomQuestionPayload, selectRandomQuestions } from './triviaQuestionService.js';
+import { normalizeOpenTriviaQuestion, buildRoomQuestionPayload, selectRandomQuestions, shuffleAnswerOptions } from './triviaQuestionService.js';
 
 test('normalizeOpenTriviaQuestion converts Open Trivia DB fields into the app contract', () => {
   const raw = {
@@ -46,6 +46,29 @@ test('selectRandomQuestions shuffles the pool while keeping all choices unique',
     assert.equal(selected.length, 5);
     assert.deepStrictEqual(new Set(selected.map((item) => item.id)).size, 5);
     assert.notDeepStrictEqual(selected.map((item) => item.id), [1, 2, 3, 4, 5]);
+  } finally {
+    Math.random = originalRandom;
+  }
+});
+
+test('shuffleAnswerOptions reorders answers without changing the set of choices', () => {
+  const originalRandom = Math.random;
+  const sequence = [0.9, 0.1, 0.8, 0.2, 0.7, 0.3];
+  let callCount = 0;
+
+  Math.random = () => {
+    const value = sequence[callCount % sequence.length];
+    callCount += 1;
+    return value;
+  };
+
+  try {
+    const answers = ['A', 'B', 'C', 'D'];
+    const shuffled = shuffleAnswerOptions(answers);
+
+    assert.equal(shuffled.length, 4);
+    assert.deepStrictEqual(new Set(shuffled).size, 4);
+    assert.notDeepStrictEqual(shuffled, ['A', 'B', 'C', 'D']);
   } finally {
     Math.random = originalRandom;
   }

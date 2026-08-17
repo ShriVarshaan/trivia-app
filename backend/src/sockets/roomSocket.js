@@ -1,5 +1,5 @@
 import { prisma } from "../config/prisma.js";
-import { getOrCreateRoomQuestionSet } from "../services/triviaQuestionService.js";
+import { getOrCreateRoomQuestionSet, shuffleAnswerOptions } from "../services/triviaQuestionService.js";
 
 const DEFAULT_ROOM_DURATION_MS = 2 * 60 * 1000;
 const roomTimers = new Map();
@@ -196,7 +196,12 @@ function sanitizeQuestionForClient(question) {
   }
 
   const { correctAnswer, correct_answer, ...rest } = question;
-  return rest;
+  const shuffledAnswers = Array.isArray(rest.answers) ? shuffleAnswerOptions(rest.answers) : rest.answers;
+
+  return {
+    ...rest,
+    answers: shuffledAnswers
+  };
 }
 
 function getOrCreatePlayerState(session, userId) {
