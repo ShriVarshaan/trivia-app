@@ -15,6 +15,11 @@ export default function Room() {
   const { roomId } = useParams();
   const [players, setPlayers] = useState([]);
   const [questions, setQuestions] = useState([]);
+  const [currentQuestion, setCurrentQuestion] = useState(null);
+  const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
+  const [totalQuestions, setTotalQuestions] = useState(0);
+  const [selectedAnswer, setSelectedAnswer] = useState("");
+  const [hasSubmittedAnswer, setHasSubmittedAnswer] = useState(false);
   const [isHost, setIsHost] = useState(false);
   const [gameStarted, setGameStarted] = useState(false);
   const [timeLeftMs, setTimeLeftMs] = useState(0);
@@ -42,10 +47,14 @@ export default function Room() {
     };
     const handleRoomTimer = ({ remainingMs = 0 }) => {
       setTimeLeftMs(Math.max(0, remainingMs));
-
-      if (remainingMs <= 0) {
-        setGameStarted(false);
-      }
+    };
+    const handleQuestionStarted = ({ question, questionIndex, totalQuestions: total = 0 } = {}) => {
+      setCurrentQuestion(question || null);
+      setCurrentQuestionIndex(Number(questionIndex) || 0);
+      setTotalQuestions(total);
+      setSelectedAnswer("");
+      setHasSubmittedAnswer(false);
+      setGameStarted(true);
     };
     const handleGameStarted = ({ questions: nextQuestions = [] } = {}) => {
       setGameStarted(true);
@@ -57,7 +66,10 @@ export default function Room() {
       setQuestions(nextQuestions);
       setGameStarted(true);
     };
-    const handleGameEnded = () => navigate(`/room/${roomId}/leaderboard`);
+    const handleGameEnded = ({ summary = [] } = {}) => {
+      localStorage.setItem(`room_summary:${roomId}`, JSON.stringify(summary));
+      navigate(`/room/${roomId}/leaderboard`);
+    };
     const handleRoomError = (data) => {
       console.error(data?.message || "Room action failed");
       alert(data?.message || "Room action failed");
@@ -66,6 +78,7 @@ export default function Room() {
     socket.on("room_players", handleRoomPlayers);
     socket.on("room_state", handleRoomState);
     socket.on("room_timer", handleRoomTimer);
+    socket.on("question_started", handleQuestionStarted);
     socket.on("game_started", handleGameStarted);
     socket.on("room_questions", handleRoomQuestions);
     socket.on("game_ended", handleGameEnded);
@@ -75,6 +88,7 @@ export default function Room() {
       socket.off("room_players", handleRoomPlayers);
       socket.off("room_state", handleRoomState);
       socket.off("room_timer", handleRoomTimer);
+      socket.off("question_started", handleQuestionStarted);
       socket.off("game_started", handleGameStarted);
       socket.off("room_questions", handleRoomQuestions);
       socket.off("game_ended", handleGameEnded);
@@ -96,6 +110,19 @@ export default function Room() {
     socket.emit("start_game", roomId);
   };
 
+  const handleAnswerSubmit = () => {
+    if (!roomId || !currentQuestion || !selectedAnswer) {
+      return;
+    }
+
+    socket.emit("submit_answer", {
+      roomId,
+      questionIndex: currentQuestionIndex,
+      answer: selectedAnswer
+    });
+    setHasSubmittedAnswer(true);
+  };
+
   return (
     <div>
       <h1>Room ID: {roomId}</h1>
@@ -103,28 +130,44 @@ export default function Room() {
 
       {gameStarted ? (
         <>
-          <p>Game started! The quiz is now live for everyone in the room.</p>
+          <p>Game started! Each question advances as soon as someone answers it.</p>
           <p>Time remaining: {formatTime(timeLeftMs)}</p>
 
-          <div>
-            <h3>Questions</h3>
-            {questions.length === 0 ? (
-              <p>Loading questions…</p>
-            ) : (
-              <ol>
-                {questions.map((question, index) => (
-                  <li key={`${question.id || index}-${question.question}`}>
-                    <p><strong>{index + 1}.</strong> {question.question}</p>
-                    <ul>
-                      {question.answers?.map((answer, answerIndex) => (
-                        <li key={`${question.id || index}-${answerIndex}`}>{answer}</li>
-                      ))}
-                    </ul>
-                  </li>
+          {currentQuestion ? (
+            <div>
+              <h3>Question {currentQuestionIndex + 1} of {totalQuestions || questions.length || 1}</h3>
+              <p>{currentQuestion.question}</p>
+
+              <div>
+                {currentQuestion.answers?.map((answer, answerIndex) => (
+                  <button
+                    key={`${answer}-${answerIndex}`}
+                    type="button"
+                    onClick={() => !hasSubmittedAnswer && setSelectedAnswer(answer)}
+                    disabled={hasSubmittedAnswer}
+                    style={{
+                      display: "block",
+                      margin: "8px 0",
+                      opacity: hasSubmittedAnswer ? 0.7 : 1,
+                      background: selectedAnswer === answer ? "#2d6cdf" : "#f0f0f0",
+                      color: selectedAnswer === answer ? "white" : "black"
+                    }}
+                  >
+                    {answer}
+                  </button>
                 ))}
-              </ol>
-            )}
-          </div>
+              </div>
+
+              {!hasSubmittedAnswer && (
+                <button type="button" onClick={handleAnswerSubmit} disabled={!selectedAnswer}>
+                  Submit Answer
+                </button>
+              )}
+              {hasSubmittedAnswer && <p>Your answer has been submitted.</p>}
+            </div>
+          ) : (
+            <p>Loading current question...</p>
+          )}
         </>
       ) : (
         <>

@@ -3,6 +3,7 @@ import { getOrCreateRoomQuestionSet } from "../services/triviaQuestionService.js
 
 const DEFAULT_ROOM_DURATION_MS = 2 * 60 * 1000;
 const roomTimers = new Map();
+const roomSessions = new Map();
 
 async function getRoomPlayers(roomId) {
   try {
@@ -64,7 +65,53 @@ function getRoomRemainingMs(roomId) {
   return Math.max(0, timer.endsAt - Date.now());
 }
 
-function endRoomTimer(io, roomId) {
+async function buildRoomSummary(roomId) {
+  const session = roomSessions.get(roomId);
+
+  if (!session || !Array.isArray(session.questions)) {
+    return [];
+  }
+
+  const players = await prisma.roomPlayer.findMany({
+    where: { room_id: roomId },
+    include: { user: { select: { id: true, username: true } } },
+    orderBy: { joined_at: "asc" }
+  });
+
+  return players
+    .map((player) => {
+      const playerState = session.players.get(player.user_id) ?? { currentIndex: 0, answersByQuestion: new Map(), completed: false };
+      const answers = playerState.answersByQuestion ?? new Map();
+      let correct = 0;
+      let wrong = 0;
+
+      session.questions.forEach((question, questionIndex) => {
+        const selectedAnswer = answers.get(questionIndex);
+        const correctAnswer = question.correctAnswer ?? question.correct_answer;
+
+        if (selectedAnswer === undefined || selectedAnswer === null) {
+          wrong += 1;
+          return;
+        }
+
+        if (selectedAnswer === correctAnswer) {
+          correct += 1;
+        } else {
+          wrong += 1;
+        }
+      });
+
+      return {
+        userId: player.user_id,
+        username: player.user.username,
+        correct,
+        wrong
+      };
+    })
+    .sort((left, right) => right.correct - left.correct || left.username.localeCompare(right.username));
+}
+
+async function endRoomTimer(io, roomId) {
   const timer = roomTimers.get(roomId);
 
   if (timer?.intervalId) {
@@ -72,6 +119,9 @@ function endRoomTimer(io, roomId) {
   }
 
   roomTimers.delete(roomId);
+
+  const summary = await buildRoomSummary(roomId);
+  roomSessions.delete(roomId);
 
   prisma.room
     .update({
@@ -88,7 +138,8 @@ function endRoomTimer(io, roomId) {
     hostId: timer?.hostId ?? null,
     gameName: "trivia"
   });
-  io.to(roomId).emit("game_ended", { roomId });
+  io.to(roomId).emit("game_summary", { roomId, summary });
+  io.to(roomId).emit("game_ended", { roomId, summary });
 }
 
 async function startRoomTimer(io, roomId, hostId) {
@@ -123,14 +174,118 @@ async function startRoomTimer(io, roomId, hostId) {
   });
 }
 
+function sanitizeQuestionForClient(question) {
+  if (!question) {
+    return null;
+  }
+
+  const { correctAnswer, correct_answer, ...rest } = question;
+  return rest;
+}
+
+function getOrCreatePlayerState(session, userId) {
+  const existing = session.players.get(userId);
+
+  if (existing) {
+    return existing;
+  }
+
+  const nextState = {
+    currentIndex: 0,
+    answersByQuestion: new Map(),
+    completed: false
+  };
+
+  session.players.set(userId, nextState);
+  return nextState;
+}
+
+function emitPlayerQuestion(socket, roomId, userId) {
+  const session = roomSessions.get(roomId);
+
+  if (!session || !Array.isArray(session.questions)) {
+    return;
+  }
+
+  const playerState = getOrCreatePlayerState(session, userId);
+  const currentQuestion = session.questions[playerState.currentIndex];
+
+  if (!currentQuestion) {
+    socket.emit("question_finished", {
+      roomId,
+      userId,
+      questionIndex: playerState.currentIndex,
+      totalQuestions: session.questions.length
+    });
+    return;
+  }
+
+  socket.emit("question_started", {
+    roomId,
+    questionIndex: playerState.currentIndex,
+    totalQuestions: session.questions.length,
+    question: sanitizeQuestionForClient(currentQuestion)
+  });
+}
+
+function emitAllPlayerQuestions(io, roomId) {
+  const room = io.sockets.adapter.rooms.get(roomId);
+
+  if (!room) {
+    return;
+  }
+
+  for (const socketId of room) {
+    const socket = io.sockets.sockets.get(socketId);
+
+    if (socket?.user?.id) {
+      emitPlayerQuestion(socket, roomId, socket.user.id);
+    }
+  }
+}
+
+async function checkRoomFinished(io, roomId) {
+  const session = roomSessions.get(roomId);
+
+  if (!session || !Array.isArray(session.questions)) {
+    return;
+  }
+
+  const participants = await prisma.roomPlayer.findMany({
+    where: { room_id: roomId },
+    select: { user_id: true }
+  });
+
+  const everyoneFinished = participants.length > 0 && participants.every(({ user_id }) => {
+    const state = session.players.get(user_id);
+    return state?.completed || state?.currentIndex >= session.questions.length;
+  });
+
+  if (everyoneFinished) {
+    await endRoomTimer(io, roomId);
+  }
+}
+
 async function emitRoomQuestions(io, roomId) {
   try {
     const questions = await getOrCreateRoomQuestionSet(prisma, roomId, { amount: 10 });
+    const session = {
+      questions: questions.map((question) => ({
+        ...question,
+        correctAnswer: question.correctAnswer ?? question.correct_answer ?? question.answers?.[0] ?? ""
+      })),
+      players: new Map()
+    };
+
+    roomSessions.set(roomId, session);
+
     io.to(roomId).emit("room_questions", {
       roomId,
       gameName: "trivia",
       questions
     });
+
+    emitAllPlayerQuestions(io, roomId);
     return questions;
   } catch (error) {
     console.error(`Error loading room questions for ${roomId}:`, error);
@@ -244,6 +399,9 @@ export function registerRoomHandlers (io, socket) {
               totalMs: roomState.durationSeconds ? roomState.durationSeconds * 1000 : DEFAULT_ROOM_DURATION_MS,
               remainingMs: getRoomRemainingMs(roomId)
             });
+            if (roomState.status === "started") {
+              emitPlayerQuestion(socket, roomId, userId);
+            }
           }
         }
 
@@ -310,6 +468,7 @@ export function registerRoomHandlers (io, socket) {
             totalMs: totalDurationMs,
             remainingMs: getRoomRemainingMs(roomId)
           });
+          emitPlayerQuestion(socket, roomId, userId);
         }
       }
 
@@ -333,6 +492,56 @@ export function registerRoomHandlers (io, socket) {
 
       console.error("Error joining room:", error);
       socket.emit("room_error", { message: "Unable to join room." });
+    }
+  });
+
+  socket.on("submit_answer", async ({ roomId, questionIndex, answer }) => {
+    try {
+      const session = roomSessions.get(roomId);
+
+      if (!session) {
+        socket.emit("answer_error", { message: "The game has not started yet." });
+        return;
+      }
+
+      const playerState = getOrCreatePlayerState(session, userId);
+      const expectedQuestionIndex = Number(questionIndex);
+      const currentQuestion = session.questions[playerState.currentIndex];
+
+      if (expectedQuestionIndex !== playerState.currentIndex || !currentQuestion) {
+        socket.emit("answer_error", { message: "This question is no longer active." });
+        return;
+      }
+
+      playerState.answersByQuestion.set(expectedQuestionIndex, answer);
+
+      const correctAnswer = currentQuestion.correctAnswer ?? currentQuestion.correct_answer;
+      socket.emit("answer_received", {
+        roomId,
+        questionIndex: expectedQuestionIndex,
+        selectedAnswer: answer,
+        isCorrect: answer === correctAnswer
+      });
+
+      const nextIndex = playerState.currentIndex + 1;
+
+      if (nextIndex < session.questions.length) {
+        playerState.currentIndex = nextIndex;
+        emitPlayerQuestion(socket, roomId, userId);
+      } else {
+        playerState.completed = true;
+        socket.emit("player_finished", {
+          roomId,
+          userId,
+          questionIndex: playerState.currentIndex,
+          totalQuestions: session.questions.length
+        });
+      }
+
+      await checkRoomFinished(io, roomId);
+    } catch (error) {
+      console.error("Error submitting answer:", error);
+      socket.emit("answer_error", { message: "Unable to submit that answer." });
     }
   });
 
@@ -394,6 +603,7 @@ export function registerRoomHandlers (io, socket) {
         totalMs: updatedRoom.duration_seconds ? updatedRoom.duration_seconds * 1000 : DEFAULT_ROOM_DURATION_MS,
         remainingMs: updatedRoom.duration_seconds ? updatedRoom.duration_seconds * 1000 : DEFAULT_ROOM_DURATION_MS
       });
+      emitAllPlayerQuestions(io, roomId);
     } catch (error) {
       console.error("Error starting game:", error);
       socket.emit("room_error", { message: "Unable to start the game." });
