@@ -22,6 +22,7 @@ export default function Room() {
   const [hasSubmittedAnswer, setHasSubmittedAnswer] = useState(false);
   const [isHost, setIsHost] = useState(false);
   const [gameStarted, setGameStarted] = useState(false);
+  const [isLoadingGame, setIsLoadingGame] = useState(false);
   const [timeLeftMs, setTimeLeftMs] = useState(0);
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -60,11 +61,13 @@ export default function Room() {
       setGameStarted(true);
       if (nextQuestions.length > 0) {
         setQuestions(nextQuestions);
+        setIsLoadingGame(false);
       }
     };
     const handleRoomQuestions = ({ questions: nextQuestions = [] } = {}) => {
       setQuestions(nextQuestions);
       setGameStarted(true);
+      setIsLoadingGame(false);
     };
     const handleGameEnded = ({ summary = [] } = {}) => {
       localStorage.setItem(`room_summary:${roomId}`, JSON.stringify(summary));
@@ -107,6 +110,7 @@ export default function Room() {
 
   const handleStartGame = () => {
     if (!roomId) return;
+    setIsLoadingGame(true);
     socket.emit("start_game", roomId);
   };
 
@@ -131,7 +135,7 @@ export default function Room() {
       {gameStarted ? (
         <>
           <p>Game started! Each question advances as soon as someone answers it.</p>
-          <p>Time remaining: {formatTime(timeLeftMs)}</p>
+          {questions.length > 0 && <p>Time remaining: {formatTime(timeLeftMs)}</p>}
 
           {currentQuestion ? (
             <div>
@@ -172,7 +176,11 @@ export default function Room() {
       ) : (
         <>
           <p>{isHost ? "You are the host." : "Waiting for the host to start the game."}</p>
-          {isHost && <button onClick={handleStartGame}>Start Game</button>}
+          {isHost && (
+            <button onClick={handleStartGame} disabled={isLoadingGame}>
+              {isLoadingGame ? "Loading..." : "Start Game"}
+            </button>
+          )}
         </>
       )}
 

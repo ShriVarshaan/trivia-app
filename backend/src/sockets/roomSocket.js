@@ -690,7 +690,6 @@ export function registerRoomHandlers (io, socket) {
         data: { status: "started" }
       });
 
-      await startRoomTimer(io, roomId, userId);
       const questions = await emitRoomQuestions(io, roomId);
 
       io.to(roomId).emit("game_started", { roomId: updatedRoom.room_id, gameName: updatedRoom.game_name ?? "trivia", questions });
@@ -701,12 +700,9 @@ export function registerRoomHandlers (io, socket) {
         status: updatedRoom.status,
         durationSeconds: updatedRoom.duration_seconds ?? 120
       });
-      io.to(roomId).emit("room_timer", {
-        roomId: updatedRoom.room_id,
-        totalMs: updatedRoom.duration_seconds ? updatedRoom.duration_seconds * 1000 : DEFAULT_ROOM_DURATION_MS,
-        remainingMs: updatedRoom.duration_seconds ? updatedRoom.duration_seconds * 1000 : DEFAULT_ROOM_DURATION_MS
-      });
       emitAllPlayerQuestions(io, roomId);
+
+      await startRoomTimer(io, roomId, userId);
     } catch (error) {
       console.error("Error starting game:", error);
       socket.emit("room_error", { message: "Unable to start the game." });
