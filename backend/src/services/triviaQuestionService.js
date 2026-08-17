@@ -58,6 +58,13 @@ export function buildRoomQuestionPayload(roomQuestions) {
   }));
 }
 
+export function getQuestionCountForDuration(durationSeconds = 120) {
+  const normalizedDuration = Number(durationSeconds) || 120;
+  const extraWindowSeconds = Math.max(0, normalizedDuration - 120);
+  const extraQuestions = Math.floor(extraWindowSeconds / 15) * 10;
+  return 30 + extraQuestions;
+}
+
 export function selectRandomQuestions(questionPool = [], amount = 10) {
   if (!Array.isArray(questionPool) || questionPool.length === 0) {
     return [];
@@ -96,7 +103,7 @@ export function buildSourceHash(question) {
   return createHash('sha256').update(serialized).digest('hex');
 }
 
-export async function fetchOpenTriviaQuestions({ amount = 10, category, difficulty, type = 'multiple' } = {}) {
+export async function fetchOpenTriviaQuestions({ amount = 10, category, difficulty, type = 'multiple', retries = 5 } = {}) {
   const params = new URLSearchParams({
     amount: String(amount),
     type
@@ -110,21 +117,44 @@ export async function fetchOpenTriviaQuestions({ amount = 10, category, difficul
     params.set('difficulty', String(difficulty));
   }
 
-  const response = await fetch(`${OPEN_TRIVIA_API_URL}?${params.toString()}`, {
-    headers: { Accept: 'application/json' }
-  });
+  let lastError = null;
 
-  if (!response.ok) {
-    throw new Error(`Open Trivia API request failed with status ${response.status}`);
+  for (let attempt = 0; attempt <= retries; attempt += 1) {
+    try {
+      const response = await fetch(`${OPEN_TRIVIA_API_URL}?${params.toString()}`, {
+        headers: { Accept: 'application/json' }
+      });
+
+      if (response.status === 429 && attempt < retries) {
+        const delayMs = 1000 * (attempt + 1) * 2;
+        await new Promise((resolve) => setTimeout(resolve, delayMs));
+        continue;
+      }
+
+      if (!response.ok) {
+        throw new Error(`Open Trivia API request failed with status ${response.status}`);
+      }
+
+      const payload = await response.json();
+
+      if (payload?.response_code !== 0) {
+        throw new Error(`Open Trivia API returned a non-zero response code: ${payload?.response_code ?? 'unknown'}`);
+      }
+
+      return (payload.results ?? []).map(normalizeOpenTriviaQuestion);
+    } catch (error) {
+      lastError = error;
+
+      if (attempt >= retries) {
+        break;
+      }
+
+      const delayMs = 1000 * (attempt + 1) * 2;
+      await new Promise((resolve) => setTimeout(resolve, delayMs));
+    }
   }
 
-  const payload = await response.json();
-
-  if (payload?.response_code !== 0) {
-    throw new Error(`Open Trivia API returned a non-zero response code: ${payload?.response_code ?? 'unknown'}`);
-  }
-
-  return (payload.results ?? []).map(normalizeOpenTriviaQuestion);
+  throw lastError ?? new Error('Open Trivia API request failed');
 }
 
 export async function upsertTriviaQuestions(prisma, questions = []) {
@@ -186,15 +216,19 @@ export async function upsertTriviaQuestions(prisma, questions = []) {
   return savedQuestions;
 }
 
-export async function getOrCreateRoomQuestionSet(prisma, roomId, { amount = 10 } = {}) {
+export async function getOrCreateRoomQuestionSet(prisma, roomId, { amount } = {}) {
   const room = await prisma.room.findUnique({
     where: { room_id: roomId },
-    select: { room_id: true, game_name: true }
+    select: { room_id: true, game_name: true, duration_seconds: true }
   });
 
   if (!room) {
     throw new Error('ROOM_NOT_FOUND');
   }
+
+  const targetAmount = Number.isInteger(amount) && amount > 0
+    ? amount
+    : getQuestionCountForDuration(room.duration_seconds);
 
   const existingRoomQuestions = await prisma.roomQuestion.findMany({
     where: { room_id: roomId },
@@ -202,7 +236,7 @@ export async function getOrCreateRoomQuestionSet(prisma, roomId, { amount = 10 }
     include: { question: true }
   });
 
-  if (existingRoomQuestions.length >= amount) {
+  if (existingRoomQuestions.length >= targetAmount) {
     return buildRoomQuestionPayload(
       existingRoomQuestions.map((item) => ({
         id: item.question_id,
@@ -231,44 +265,47 @@ export async function getOrCreateRoomQuestionSet(prisma, roomId, { amount = 10 }
     throw new Error('NO_QUESTIONS_AVAILABLE');
   }
 
-  const randomQuestions = selectRandomQuestions(questionPool, amount);
+  const randomQuestions = selectRandomQuestions(questionPool, targetAmount);
+  const nextQuestionIndex = existingRoomQuestions.length;
+  const roomQuestionRows = [];
 
-  const roomQuestions = [];
   for (const [index, question] of randomQuestions.entries()) {
-    const roomIndex = existingRoomQuestions.length + index;
-    const existing = await prisma.roomQuestion.findUnique({
-      where: {
-        room_id_question_index: {
-          room_id: roomId,
-          question_index: roomIndex
-        }
-      }
-    });
+    const roomIndex = nextQuestionIndex + index;
+    const existing = existingRoomQuestions.find((item) => item.question_index === roomIndex);
 
-    if (!existing) {
-      await prisma.roomQuestion.create({
-        data: {
-          room_id: roomId,
-          question_id: question.id,
-          game_name: room.game_name ?? DEFAULT_GAME_NAME,
-          question_index: roomIndex,
-          question_text: question.question,
-          category: question.category,
-          difficulty: question.difficulty,
-          answers: question.answers,
-          correct_answer: question.correct_answer
-        }
+    if (existing) {
+      roomQuestionRows.push({
+        id: existing.question_id,
+        question: existing.question_text,
+        category: existing.category,
+        difficulty: existing.difficulty,
+        answers: Array.isArray(existing.answers) ? existing.answers : []
       });
+      continue;
     }
 
-    roomQuestions.push({
+    roomQuestionRows.push({
       id: question.id,
       question: question.question,
       category: question.category,
       difficulty: question.difficulty,
       answers: Array.isArray(question.answers) ? question.answers : [question.correct_answer]
     });
+
+    await prisma.roomQuestion.create({
+      data: {
+        room_id: roomId,
+        question_id: question.id,
+        game_name: room.game_name ?? DEFAULT_GAME_NAME,
+        question_index: roomIndex,
+        question_text: question.question,
+        category: question.category,
+        difficulty: question.difficulty,
+        answers: question.answers,
+        correct_answer: question.correct_answer
+      }
+    });
   }
 
-  return buildRoomQuestionPayload(roomQuestions);
+  return buildRoomQuestionPayload(roomQuestionRows);
 }

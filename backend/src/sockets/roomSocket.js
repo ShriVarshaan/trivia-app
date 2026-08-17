@@ -302,7 +302,20 @@ async function checkRoomFinished(io, roomId) {
 
 async function emitRoomQuestions(io, roomId) {
   try {
-    const questions = await getOrCreateRoomQuestionSet(prisma, roomId, { amount: 10 });
+    const existingSession = roomSessions.get(roomId);
+
+    if (existingSession && Array.isArray(existingSession.questions)) {
+      await initializeSessionPlayers(roomId, existingSession);
+      io.to(roomId).emit("room_questions", {
+        roomId,
+        gameName: "trivia",
+        questions: existingSession.questions
+      });
+      emitAllPlayerQuestions(io, roomId);
+      return existingSession.questions;
+    }
+
+    const questions = await getOrCreateRoomQuestionSet(prisma, roomId);
     const session = {
       questions: questions.map((question) => ({
         ...question,
@@ -473,7 +486,11 @@ export function registerRoomHandlers (io, socket) {
           socket.emit("room_state", roomState);
 
           if (roomState.status === "started") {
-            const questions = await emitRoomQuestions(io, roomId);
+            const session = roomSessions.get(roomId);
+            const questions = session && Array.isArray(session.questions)
+              ? session.questions
+              : await emitRoomQuestions(io, roomId);
+
             socket.emit("game_started", { roomId: roomState.roomId, gameName: roomState.gameName ?? "trivia", questions });
             socket.emit("room_timer", {
               roomId: roomState.roomId,
@@ -543,7 +560,11 @@ export function registerRoomHandlers (io, socket) {
 
         if (roomState.status === "started") {
           const totalDurationMs = roomState.durationSeconds * 1000;
-          const questions = await emitRoomQuestions(io, roomId);
+          const session = roomSessions.get(roomId);
+          const questions = session && Array.isArray(session.questions)
+            ? session.questions
+            : await emitRoomQuestions(io, roomId);
+
           socket.emit("game_started", { roomId: roomState.roomId, gameName: roomState.gameName ?? "trivia", questions });
           socket.emit("room_timer", {
             roomId: roomState.roomId,

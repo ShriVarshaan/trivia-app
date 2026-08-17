@@ -1,7 +1,14 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { normalizeOpenTriviaQuestion, buildRoomQuestionPayload, selectRandomQuestions, shuffleAnswerOptions } from './triviaQuestionService.js';
+import {
+  normalizeOpenTriviaQuestion,
+  buildRoomQuestionPayload,
+  selectRandomQuestions,
+  shuffleAnswerOptions,
+  getQuestionCountForDuration,
+  getOrCreateRoomQuestionSet
+} from './triviaQuestionService.js';
 
 test('normalizeOpenTriviaQuestion converts Open Trivia DB fields into the app contract', () => {
   const raw = {
@@ -110,4 +117,48 @@ test('buildRoomQuestionPayload keeps one question order per room and keeps all a
       answers: ['X', 'Y', 'Z', 'W']
     }
   ]);
+});
+
+test('getQuestionCountForDuration scales by 15-second increments after a 2 minute base', () => {
+  assert.equal(getQuestionCountForDuration(120), 30);
+  assert.equal(getQuestionCountForDuration(135), 40);
+  assert.equal(getQuestionCountForDuration(150), 50);
+  assert.equal(getQuestionCountForDuration(240), 110);
+});
+
+test('getOrCreateRoomQuestionSet reuses existing room questions instead of duplicating indexes', async () => {
+  const createCalls = [];
+  const roomId = 'room-123';
+  const existingQuestions = Array.from({ length: 30 }, (_, index) => ({
+    room_id: roomId,
+    question_id: 100 + index,
+    question_index: index,
+    question_text: `Existing question ${index + 1}`,
+    category: 'History',
+    difficulty: 'easy',
+    answers: ['A', 'B', 'C', 'D']
+  }));
+
+  const prisma = {
+    room: {
+      findUnique: async () => ({ room_id: roomId, game_name: 'trivia', duration_seconds: 120 })
+    },
+    roomQuestion: {
+      findMany: async () => existingQuestions,
+      create: async (data) => {
+        createCalls.push(data);
+        return data;
+      }
+    },
+    gameQuestion: {
+      findMany: async () => []
+    }
+  };
+
+  const payload = await getOrCreateRoomQuestionSet(prisma, roomId);
+
+  assert.equal(payload.length, 30);
+  assert.equal(payload[0].question, 'Existing question 1');
+  assert.equal(payload[29].question, 'Existing question 30');
+  assert.deepStrictEqual(createCalls, []);
 });
