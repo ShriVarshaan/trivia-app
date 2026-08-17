@@ -1,4 +1,5 @@
 import { prisma } from "../config/prisma.js";
+import { getOrCreateRoomQuestionSet } from "../services/triviaQuestionService.js";
 
 const DEFAULT_ROOM_DURATION_MS = 2 * 60 * 1000;
 const roomTimers = new Map();
@@ -26,13 +27,14 @@ async function getRoomState(roomId) {
   try {
     const room = await prisma.room.findUnique({
       where: { room_id: roomId },
-      select: { room_id: true, host_id: true, status: true, duration_seconds: true }
+      select: { room_id: true, host_id: true, game_name: true, status: true, duration_seconds: true }
     });
 
     return room
       ? {
           roomId: room.room_id,
           hostId: room.host_id,
+          gameName: room.game_name ?? "trivia",
           status: room.status,
           durationSeconds: room.duration_seconds
         }
@@ -83,7 +85,8 @@ function endRoomTimer(io, roomId) {
   io.to(roomId).emit("room_state", {
     roomId,
     status: "finished",
-    hostId: timer?.hostId ?? null
+    hostId: timer?.hostId ?? null,
+    gameName: "trivia"
   });
   io.to(roomId).emit("game_ended", { roomId });
 }
@@ -118,6 +121,21 @@ async function startRoomTimer(io, roomId, hostId) {
     totalMs: totalDurationMs,
     remainingMs: totalDurationMs
   });
+}
+
+async function emitRoomQuestions(io, roomId) {
+  try {
+    const questions = await getOrCreateRoomQuestionSet(prisma, roomId, { amount: 10 });
+    io.to(roomId).emit("room_questions", {
+      roomId,
+      gameName: "trivia",
+      questions
+    });
+    return questions;
+  } catch (error) {
+    console.error(`Error loading room questions for ${roomId}:`, error);
+    return [];
+  }
 }
 
 async function refreshRoomCount(roomId) {
@@ -219,10 +237,11 @@ export function registerRoomHandlers (io, socket) {
           socket.emit("room_state", roomState);
 
           if (roomState.status === "started") {
-            socket.emit("game_started", { roomId: roomState.roomId });
+            const questions = await emitRoomQuestions(io, roomId);
+            socket.emit("game_started", { roomId: roomState.roomId, gameName: roomState.gameName ?? "trivia", questions });
             socket.emit("room_timer", {
               roomId: roomState.roomId,
-              totalMs: ROOM_DURATION_MS,
+              totalMs: roomState.durationSeconds ? roomState.durationSeconds * 1000 : DEFAULT_ROOM_DURATION_MS,
               remainingMs: getRoomRemainingMs(roomId)
             });
           }
@@ -284,7 +303,8 @@ export function registerRoomHandlers (io, socket) {
 
         if (roomState.status === "started") {
           const totalDurationMs = roomState.durationSeconds * 1000;
-          socket.emit("game_started", { roomId: roomState.roomId });
+          const questions = await emitRoomQuestions(io, roomId);
+          socket.emit("game_started", { roomId: roomState.roomId, gameName: roomState.gameName ?? "trivia", questions });
           socket.emit("room_timer", {
             roomId: roomState.roomId,
             totalMs: totalDurationMs,
@@ -320,7 +340,7 @@ export function registerRoomHandlers (io, socket) {
     try {
       const room = await prisma.room.findUnique({
         where: { room_id: roomId },
-        select: { room_id: true, host_id: true, status: true }
+        select: { room_id: true, host_id: true, game_name: true, status: true, duration_seconds: true }
       });
 
       if (!room) {
@@ -335,11 +355,13 @@ export function registerRoomHandlers (io, socket) {
 
       if (room.status === "started") {
         const totalDurationMs = await getRoomDurationMs(roomId);
+        const questions = await emitRoomQuestions(io, roomId);
 
-        io.to(roomId).emit("game_started", { roomId: room.room_id });
+        io.to(roomId).emit("game_started", { roomId: room.room_id, gameName: room.game_name ?? "trivia", questions });
         io.to(roomId).emit("room_state", {
           roomId: room.room_id,
           hostId: room.host_id,
+          gameName: room.game_name ?? "trivia",
           status: room.status,
           durationSeconds: room.duration_seconds ?? 120
         });
@@ -357,11 +379,13 @@ export function registerRoomHandlers (io, socket) {
       });
 
       await startRoomTimer(io, roomId, userId);
+      const questions = await emitRoomQuestions(io, roomId);
 
-      io.to(roomId).emit("game_started", { roomId: updatedRoom.room_id });
+      io.to(roomId).emit("game_started", { roomId: updatedRoom.room_id, gameName: updatedRoom.game_name ?? "trivia", questions });
       io.to(roomId).emit("room_state", {
         roomId: updatedRoom.room_id,
         hostId: updatedRoom.host_id,
+        gameName: updatedRoom.game_name ?? "trivia",
         status: updatedRoom.status,
         durationSeconds: updatedRoom.duration_seconds ?? 120
       });

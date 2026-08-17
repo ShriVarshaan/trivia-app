@@ -14,6 +14,7 @@ const formatTime = (remainingMs) => {
 export default function Room() {
   const { roomId } = useParams();
   const [players, setPlayers] = useState([]);
+  const [questions, setQuestions] = useState([]);
   const [isHost, setIsHost] = useState(false);
   const [gameStarted, setGameStarted] = useState(false);
   const [timeLeftMs, setTimeLeftMs] = useState(0);
@@ -46,7 +47,16 @@ export default function Room() {
         setGameStarted(false);
       }
     };
-    const handleGameStarted = () => setGameStarted(true);
+    const handleGameStarted = ({ questions: nextQuestions = [] } = {}) => {
+      setGameStarted(true);
+      if (nextQuestions.length > 0) {
+        setQuestions(nextQuestions);
+      }
+    };
+    const handleRoomQuestions = ({ questions: nextQuestions = [] } = {}) => {
+      setQuestions(nextQuestions);
+      setGameStarted(true);
+    };
     const handleGameEnded = () => navigate(`/room/${roomId}/leaderboard`);
     const handleRoomError = (data) => {
       console.error(data?.message || "Room action failed");
@@ -57,6 +67,7 @@ export default function Room() {
     socket.on("room_state", handleRoomState);
     socket.on("room_timer", handleRoomTimer);
     socket.on("game_started", handleGameStarted);
+    socket.on("room_questions", handleRoomQuestions);
     socket.on("game_ended", handleGameEnded);
     socket.on("room_error", handleRoomError);
 
@@ -65,6 +76,7 @@ export default function Room() {
       socket.off("room_state", handleRoomState);
       socket.off("room_timer", handleRoomTimer);
       socket.off("game_started", handleGameStarted);
+      socket.off("room_questions", handleRoomQuestions);
       socket.off("game_ended", handleGameEnded);
       socket.off("room_error", handleRoomError);
 
@@ -93,6 +105,26 @@ export default function Room() {
         <>
           <p>Game started! The quiz is now live for everyone in the room.</p>
           <p>Time remaining: {formatTime(timeLeftMs)}</p>
+
+          <div>
+            <h3>Questions</h3>
+            {questions.length === 0 ? (
+              <p>Loading questions…</p>
+            ) : (
+              <ol>
+                {questions.map((question, index) => (
+                  <li key={`${question.id || index}-${question.question}`}>
+                    <p><strong>{index + 1}.</strong> {question.question}</p>
+                    <ul>
+                      {question.answers?.map((answer, answerIndex) => (
+                        <li key={`${question.id || index}-${answerIndex}`}>{answer}</li>
+                      ))}
+                    </ul>
+                  </li>
+                ))}
+              </ol>
+            )}
+          </div>
         </>
       ) : (
         <>

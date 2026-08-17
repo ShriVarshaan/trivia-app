@@ -18,6 +18,7 @@ export async function createRoom(req, res){
     const generateCode = customAlphabet('23456789ABCDEFGHJKLMNPQRSTUVWXYZ', 6);
     let maxPlayers = 2;
     let durationSeconds = 120;
+    const gameName = 'trivia';
 
     while (attempts < attemptLimit) {
         const roomCode = generateCode();
@@ -48,6 +49,7 @@ export async function createRoom(req, res){
                 data: {
                     room_id: roomCode,
                     host_id: req.user.id,
+                    game_name: gameName,
                     max_players: maxPlayers,
                     cur_players: 1,
                     duration_seconds: durationSeconds,
