@@ -169,60 +169,153 @@ export async function fetchOpenTriviaQuestions({ amount = 10, category, difficul
   throw lastError ?? new Error('Open Trivia API request failed');
 }
 
-export async function upsertTriviaQuestions(prisma, questions = []) {
-  const savedQuestions = [];
-
-  for (const question of questions) {
-    const normalized = normalizeOpenTriviaQuestion(question);
-    const sourceHash = buildSourceHash(normalized);
-
-    const existingQuestion = await prisma.gameQuestion.findUnique({
-      where: { source_hash: sourceHash },
-      select: { id: true, category: true, difficulty: true, question: true, correct_answer: true, answers: true }
-    });
-
-    if (existingQuestion) {
-      savedQuestions.push({
-        id: existingQuestion.id,
-        question: existingQuestion.question,
-        category: existingQuestion.category,
-        difficulty: existingQuestion.difficulty,
-        correctAnswer: existingQuestion.correct_answer,
-        answers: Array.isArray(existingQuestion.answers) ? existingQuestion.answers : []
-      });
-      continue;
-    }
-
-    const createdQuestion = await prisma.gameQuestion.create({
-      data: {
-        game_name: DEFAULT_GAME_NAME,
-        category: normalized.category,
-        difficulty: normalized.difficulty,
-        question: normalized.question,
-        correct_answer: normalized.correctAnswer,
-        incorrect_answers: normalized.incorrectAnswers,
-        answers: normalized.answers,
-        source: 'opentdb',
-        source_hash: sourceHash
-      },
-      select: {
-        id: true,
-        category: true,
-        difficulty: true,
-        question: true,
-        correct_answer: true,
-        answers: true
+export async function getRandomGameQuestions(prisma, gameName, amount) {
+  if (typeof prisma.$queryRaw === 'function') {
+    try {
+      const rows = await prisma.$queryRaw`
+        SELECT id, question, category, difficulty, correct_answer, answers
+        FROM "GameQuestion"
+        WHERE game_name::text = ${gameName}
+        ORDER BY RANDOM()
+        LIMIT ${amount};
+      `;
+      if (Array.isArray(rows) && rows.length > 0) {
+        return rows;
       }
+    } catch (e) {
+      // Fallback if raw query is not supported or fails
+    }
+  }
+
+  const pool = await prisma.gameQuestion.findMany({
+    where: { game_name: gameName },
+    orderBy: { id: 'asc' },
+    select: {
+      id: true,
+      question: true,
+      category: true,
+      difficulty: true,
+      correct_answer: true,
+      answers: true
+    }
+  });
+
+  return selectRandomQuestions(pool, amount);
+}
+
+export async function ensureQuestionPoolHealth(prisma, minThreshold = 50) {
+  try {
+    if (typeof prisma.gameQuestion?.count !== 'function') {
+      return;
+    }
+    const count = await prisma.gameQuestion.count({
+      where: { game_name: DEFAULT_GAME_NAME }
     });
 
-    savedQuestions.push({
-      id: createdQuestion.id,
-      question: createdQuestion.question,
-      category: createdQuestion.category,
-      difficulty: createdQuestion.difficulty,
-      correctAnswer: createdQuestion.correct_answer,
-      answers: Array.isArray(createdQuestion.answers) ? createdQuestion.answers : []
-    });
+    if (count < minThreshold) {
+      fetchOpenTriviaQuestions({ amount: Math.max(minThreshold, 50) })
+        .then((fetched) => upsertTriviaQuestions(prisma, fetched))
+        .catch((err) => console.warn("Background pool replenishment warning:", err.message));
+    }
+  } catch (err) {
+    console.warn("Could not check question pool health:", err.message);
+  }
+}
+
+export async function upsertTriviaQuestions(prisma, questions = []) {
+  if (!Array.isArray(questions) || questions.length === 0) {
+    return [];
+  }
+
+  const prepared = questions.map((q) => {
+    const normalized = normalizeOpenTriviaQuestion(q);
+    const sourceHash = buildSourceHash(normalized);
+    return { normalized, sourceHash };
+  });
+
+  const sourceHashes = prepared.map((p) => p.sourceHash);
+
+  const existingQuestions = await prisma.gameQuestion.findMany({
+    where: { source_hash: { in: sourceHashes } },
+    select: { id: true, category: true, difficulty: true, question: true, correct_answer: true, answers: true, source_hash: true }
+  });
+
+  const existingHashMap = new Map(existingQuestions.map((q) => [q.source_hash, q]));
+  const savedQuestions = [];
+  const toCreateData = [];
+
+  for (const item of prepared) {
+    const existing = existingHashMap.get(item.sourceHash);
+    if (existing) {
+      savedQuestions.push({
+        id: existing.id,
+        question: existing.question,
+        category: existing.category,
+        difficulty: existing.difficulty,
+        correctAnswer: existing.correct_answer,
+        answers: Array.isArray(existing.answers) ? existing.answers : []
+      });
+    } else {
+      toCreateData.push({
+        game_name: DEFAULT_GAME_NAME,
+        category: item.normalized.category,
+        difficulty: item.normalized.difficulty,
+        question: item.normalized.question,
+        correct_answer: item.normalized.correctAnswer,
+        incorrect_answers: item.normalized.incorrectAnswers,
+        answers: item.normalized.answers,
+        source: 'opentdb',
+        source_hash: item.sourceHash
+      });
+    }
+  }
+
+  if (toCreateData.length > 0) {
+    if (typeof prisma.gameQuestion.createMany === 'function') {
+      await prisma.gameQuestion.createMany({
+        data: toCreateData,
+        skipDuplicates: true
+      });
+      let createdRows = await prisma.gameQuestion.findMany({
+        where: { source_hash: { in: toCreateData.map((d) => d.source_hash) } },
+        select: { id: true, category: true, difficulty: true, question: true, correct_answer: true, answers: true }
+      });
+      if (!Array.isArray(createdRows) || createdRows.length === 0) {
+        createdRows = toCreateData.map((item, index) => ({
+          id: index + 1,
+          question: item.question,
+          category: item.category,
+          difficulty: item.difficulty,
+          correct_answer: item.correct_answer,
+          answers: item.answers
+        }));
+      }
+      for (const row of createdRows) {
+        savedQuestions.push({
+          id: row.id,
+          question: row.question,
+          category: row.category,
+          difficulty: row.difficulty,
+          correctAnswer: row.correct_answer,
+          answers: Array.isArray(row.answers) ? row.answers : []
+        });
+      }
+    } else {
+      for (const data of toCreateData) {
+        const createdQuestion = await prisma.gameQuestion.create({
+          data,
+          select: { id: true, category: true, difficulty: true, question: true, correct_answer: true, answers: true }
+        });
+        savedQuestions.push({
+          id: createdQuestion.id,
+          question: createdQuestion.question,
+          category: createdQuestion.category,
+          difficulty: createdQuestion.difficulty,
+          correctAnswer: createdQuestion.correct_answer,
+          answers: Array.isArray(createdQuestion.answers) ? createdQuestion.answers : []
+        });
+      }
+    }
   }
 
   return savedQuestions;
@@ -260,87 +353,75 @@ export async function getOrCreateRoomQuestionSet(prisma, roomId, { amount } = {}
     );
   }
 
-  let questionPool = await prisma.gameQuestion.findMany({
-    where: { game_name: room.game_name ?? DEFAULT_GAME_NAME },
-    orderBy: { id: 'asc' },
-    select: {
-      id: true,
-      question: true,
-      category: true,
-      difficulty: true,
-      correct_answer: true,
-      answers: true
-    }
-  });
+  const neededCount = targetAmount - existingRoomQuestions.length;
+  let selectedQuestions = await getRandomGameQuestions(prisma, room.game_name ?? DEFAULT_GAME_NAME, neededCount);
 
-  if (questionPool.length < targetAmount) {
+  if (selectedQuestions.length < neededCount) {
     try {
-      const fetched = await fetchOpenTriviaQuestions({ amount: Math.max(targetAmount, 50) });
+      const fetched = await fetchOpenTriviaQuestions({ amount: Math.max(neededCount, 50) });
       if (Array.isArray(fetched) && fetched.length > 0) {
         await upsertTriviaQuestions(prisma, fetched);
-        questionPool = await prisma.gameQuestion.findMany({
-          where: { game_name: room.game_name ?? DEFAULT_GAME_NAME },
-          orderBy: { id: 'asc' },
-          select: {
-            id: true,
-            question: true,
-            category: true,
-            difficulty: true,
-            correct_answer: true,
-            answers: true
-          }
-        });
+        selectedQuestions = await getRandomGameQuestions(prisma, room.game_name ?? DEFAULT_GAME_NAME, neededCount);
       }
     } catch (error) {
       console.warn("Failed to auto-fetch questions from OpenTDB:", error.message);
     }
   }
 
-  if (questionPool.length === 0) {
+  if (selectedQuestions.length === 0 && existingRoomQuestions.length === 0) {
     throw new Error('NO_QUESTIONS_AVAILABLE');
   }
 
-  const randomQuestions = selectRandomQuestions(questionPool, targetAmount);
   const nextQuestionIndex = existingRoomQuestions.length;
-  const roomQuestionRows = [];
+  const roomQuestionRows = existingRoomQuestions.map((item) => ({
+    id: item.question_id,
+    question: item.question_text,
+    category: item.category,
+    difficulty: item.difficulty,
+    answers: Array.isArray(item.answers) ? item.answers : []
+  }));
 
-  for (const [index, question] of randomQuestions.entries()) {
+  const toCreateData = [];
+
+  for (const [index, question] of selectedQuestions.entries()) {
     const roomIndex = nextQuestionIndex + index;
-    const existing = existingRoomQuestions.find((item) => item.question_index === roomIndex);
-
-    if (existing) {
-      roomQuestionRows.push({
-        id: existing.question_id,
-        question: existing.question_text,
-        category: existing.category,
-        difficulty: existing.difficulty,
-        answers: Array.isArray(existing.answers) ? existing.answers : []
-      });
-      continue;
-    }
+    const answers = Array.isArray(question.answers) ? question.answers : [question.correct_answer ?? question.correctAnswer];
 
     roomQuestionRows.push({
       id: question.id,
       question: question.question,
       category: question.category,
       difficulty: question.difficulty,
-      answers: Array.isArray(question.answers) ? question.answers : [question.correct_answer]
+      answers
     });
 
-    await prisma.roomQuestion.create({
-      data: {
-        room_id: roomId,
-        question_id: question.id,
-        game_name: room.game_name ?? DEFAULT_GAME_NAME,
-        question_index: roomIndex,
-        question_text: question.question,
-        category: question.category,
-        difficulty: question.difficulty,
-        answers: question.answers,
-        correct_answer: question.correct_answer
-      }
+    toCreateData.push({
+      room_id: roomId,
+      question_id: question.id,
+      game_name: room.game_name ?? DEFAULT_GAME_NAME,
+      question_index: roomIndex,
+      question_text: question.question,
+      category: question.category,
+      difficulty: question.difficulty,
+      answers,
+      correct_answer: question.correct_answer ?? question.correctAnswer
     });
   }
+
+  if (toCreateData.length > 0) {
+    if (typeof prisma.roomQuestion.createMany === 'function') {
+      await prisma.roomQuestion.createMany({
+        data: toCreateData,
+        skipDuplicates: true
+      });
+    } else {
+      for (const data of toCreateData) {
+        await prisma.roomQuestion.create({ data });
+      }
+    }
+  }
+
+  void ensureQuestionPoolHealth(prisma, 100);
 
   return buildRoomQuestionPayload(roomQuestionRows);
 }

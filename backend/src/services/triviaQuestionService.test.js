@@ -7,7 +7,9 @@ import {
   selectRandomQuestions,
   shuffleAnswerOptions,
   getQuestionCountForDuration,
-  getOrCreateRoomQuestionSet
+  getOrCreateRoomQuestionSet,
+  upsertTriviaQuestions,
+  getRandomGameQuestions
 } from './triviaQuestionService.js';
 
 test('normalizeOpenTriviaQuestion converts Open Trivia DB fields into the app contract', () => {
@@ -163,9 +165,9 @@ test('getOrCreateRoomQuestionSet reuses existing room questions instead of dupli
   assert.deepStrictEqual(createCalls, []);
 });
 
-test('getOrCreateRoomQuestionSet creates new room questions from gameQuestion pool when none exist', async () => {
-  const createCalls = [];
-  const roomId = 'new-room-456';
+test('getOrCreateRoomQuestionSet creates new room questions using createMany when available', async () => {
+  const createManyCalls = [];
+  const roomId = 'room-createmany-123';
   const gameQuestionPool = Array.from({ length: 35 }, (_, index) => ({
     id: index + 1,
     question: `Game Question ${index + 1}`,
@@ -181,9 +183,9 @@ test('getOrCreateRoomQuestionSet creates new room questions from gameQuestion po
     },
     roomQuestion: {
       findMany: async () => [],
-      create: async ({ data }) => {
-        createCalls.push(data);
-        return data;
+      createMany: async ({ data }) => {
+        createManyCalls.push(...data);
+        return { count: data.length };
       }
     },
     gameQuestion: {
@@ -194,7 +196,44 @@ test('getOrCreateRoomQuestionSet creates new room questions from gameQuestion po
   const payload = await getOrCreateRoomQuestionSet(prisma, roomId);
 
   assert.equal(payload.length, 30);
-  assert.equal(createCalls.length, 30);
-  assert.equal(createCalls[0].room_id, roomId);
+  assert.equal(createManyCalls.length, 30);
+  assert.equal(createManyCalls[0].room_id, roomId);
 });
+
+test('upsertTriviaQuestions uses bulk querying and createMany when available', async () => {
+  const createManyCalls = [];
+  const questions = [
+    {
+      category: 'Geography',
+      difficulty: 'easy',
+      question: 'What is the capital of France?',
+      correct_answer: 'Paris',
+      incorrect_answers: ['London', 'Berlin', 'Madrid']
+    },
+    {
+      category: 'Science',
+      difficulty: 'easy',
+      question: 'What is H2O commonly known as?',
+      correct_answer: 'Water',
+      incorrect_answers: ['Salt', 'Sugar', 'Air']
+    }
+  ];
+
+  const prisma = {
+    gameQuestion: {
+      findMany: async () => [],
+      createMany: async ({ data }) => {
+        createManyCalls.push(...data);
+        return { count: data.length };
+      }
+    }
+  };
+
+  const result = await upsertTriviaQuestions(prisma, questions);
+
+  assert.equal(result.length, 2);
+  assert.equal(createManyCalls.length, 2);
+  assert.equal(createManyCalls[0].question, 'What is the capital of France?');
+});
+
 
