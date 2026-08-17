@@ -111,7 +111,16 @@ async function buildRoomSummary(roomId) {
     .sort((left, right) => right.correct - left.correct || left.username.localeCompare(right.username));
 }
 
-async function endRoomTimer(io, roomId) {
+async function finalizeRoom(io, roomId) {
+  const room = await prisma.room.findUnique({
+    where: { room_id: roomId },
+    select: { status: true, host_id: true }
+  });
+
+  if (room?.status === "finished") {
+    return;
+  }
+
   const timer = roomTimers.get(roomId);
 
   if (timer?.intervalId) {
@@ -120,26 +129,33 @@ async function endRoomTimer(io, roomId) {
 
   roomTimers.delete(roomId);
 
+  try {
+    await prisma.room.update({
+      where: { room_id: roomId },
+      data: { status: "finished" }
+    });
+  } catch (error) {
+    console.error(`Error finishing room ${roomId}:`, error);
+  }
+
   const summary = await buildRoomSummary(roomId);
   roomSessions.delete(roomId);
 
-  prisma.room
-    .update({
-      where: { room_id: roomId },
-      data: { status: "finished" }
-    })
-    .catch((error) => {
-      console.error(`Error finishing room ${roomId}:`, error);
-    });
+  const roomState = await getRoomState(roomId);
+  const hostId = roomState?.hostId ?? room?.host_id ?? timer?.hostId ?? null;
 
   io.to(roomId).emit("room_state", {
     roomId,
     status: "finished",
-    hostId: timer?.hostId ?? null,
+    hostId,
     gameName: "trivia"
   });
   io.to(roomId).emit("game_summary", { roomId, summary });
   io.to(roomId).emit("game_ended", { roomId, summary });
+}
+
+async function endRoomTimer(io, roomId) {
+  await finalizeRoom(io, roomId);
 }
 
 async function startRoomTimer(io, roomId, hostId) {
@@ -161,7 +177,7 @@ async function startRoomTimer(io, roomId, hostId) {
     });
 
     if (remainingMs <= 0) {
-      endRoomTimer(io, roomId);
+      void endRoomTimer(io, roomId);
     }
   }, 1000);
 
@@ -198,6 +214,17 @@ function getOrCreatePlayerState(session, userId) {
 
   session.players.set(userId, nextState);
   return nextState;
+}
+
+async function initializeSessionPlayers(roomId, session) {
+  const participants = await prisma.roomPlayer.findMany({
+    where: { room_id: roomId },
+    select: { user_id: true }
+  });
+
+  for (const participant of participants) {
+    getOrCreatePlayerState(session, participant.user_id);
+  }
 }
 
 function emitPlayerQuestion(socket, roomId, userId) {
@@ -251,6 +278,8 @@ async function checkRoomFinished(io, roomId) {
     return;
   }
 
+  await initializeSessionPlayers(roomId, session);
+
   const participants = await prisma.roomPlayer.findMany({
     where: { room_id: roomId },
     select: { user_id: true }
@@ -262,7 +291,7 @@ async function checkRoomFinished(io, roomId) {
   });
 
   if (everyoneFinished) {
-    await endRoomTimer(io, roomId);
+    await finalizeRoom(io, roomId);
   }
 }
 
@@ -278,6 +307,7 @@ async function emitRoomQuestions(io, roomId) {
     };
 
     roomSessions.set(roomId, session);
+    await initializeSessionPlayers(roomId, session);
 
     io.to(roomId).emit("room_questions", {
       roomId,
@@ -304,6 +334,51 @@ async function refreshRoomCount(roomId) {
   });
 
   return currentCount;
+}
+
+async function ensureRoomHost(io, roomId, fallbackUserId) {
+  const room = await prisma.room.findUnique({
+    where: { room_id: roomId },
+    select: { room_id: true, host_id: true, status: true }
+  });
+
+  if (!room) {
+    return null;
+  }
+
+  const hostStillExists = await prisma.roomPlayer.findFirst({
+    where: {
+      room_id: roomId,
+      user_id: room.host_id
+    }
+  });
+
+  if (hostStillExists) {
+    return room.host_id;
+  }
+
+  const nextHostId = fallbackUserId ?? (await prisma.roomPlayer.findFirst({
+    where: { room_id: roomId },
+    orderBy: { joined_at: "asc" },
+    select: { user_id: true }
+  }))?.user_id;
+
+  if (!nextHostId) {
+    return null;
+  }
+
+  const updatedRoom = await prisma.room.update({
+    where: { room_id: roomId },
+    data: { host_id: nextHostId }
+  });
+
+  io.to(roomId).emit("room_state", {
+    roomId: updatedRoom.room_id,
+    hostId: updatedRoom.host_id,
+    status: updatedRoom.status
+  });
+
+  return updatedRoom.host_id;
 }
 
 async function transferHostIfNeeded(io, roomId, departingUserId, options = {}) {
@@ -341,11 +416,11 @@ async function transferHostIfNeeded(io, roomId, departingUserId, options = {}) {
   }
 
   if (room.status === "started") {
-    endRoomTimer(io, roomId);
+    await endRoomTimer(io, roomId);
     return;
   }
 
-  if (explicitLeave) {
+  if (explicitLeave && room.status !== "started" && room.status !== "finished") {
     await prisma.room.update({
       where: { room_id: roomId },
       data: { status: "waiting", cur_players: 0 }
@@ -386,6 +461,7 @@ export function registerRoomHandlers (io, socket) {
 
       if (existingPlayer) {
         socket.join(roomId);
+        await ensureRoomHost(io, roomId, userId);
 
         const roomState = await getRoomState(roomId);
         if (roomState) {
@@ -453,6 +529,7 @@ export function registerRoomHandlers (io, socket) {
       });
 
       socket.join(roomId);
+      await ensureRoomHost(io, roomId, userId);
       console.log(`User ${username} (${socket.id}) joined room: ${roomId}`);
 
       const roomState = await getRoomState(roomId);
