@@ -58,6 +58,21 @@ export function buildRoomQuestionPayload(roomQuestions) {
   }));
 }
 
+export function selectRandomQuestions(questionPool = [], amount = 10) {
+  if (!Array.isArray(questionPool) || questionPool.length === 0) {
+    return [];
+  }
+
+  const shuffled = [...questionPool];
+
+  for (let index = shuffled.length - 1; index > 0; index -= 1) {
+    const swapIndex = Math.floor(Math.random() * (index + 1));
+    [shuffled[index], shuffled[swapIndex]] = [shuffled[swapIndex], shuffled[index]];
+  }
+
+  return shuffled.slice(0, Math.min(amount, shuffled.length));
+}
+
 export function buildSourceHash(question) {
   const serialized = JSON.stringify({
     question: question.question,
@@ -191,7 +206,6 @@ export async function getOrCreateRoomQuestionSet(prisma, roomId, { amount = 10 }
   const questionPool = await prisma.gameQuestion.findMany({
     where: { game_name: room.game_name ?? DEFAULT_GAME_NAME },
     orderBy: { id: 'asc' },
-    take: amount,
     select: {
       id: true,
       question: true,
@@ -206,8 +220,10 @@ export async function getOrCreateRoomQuestionSet(prisma, roomId, { amount = 10 }
     throw new Error('NO_QUESTIONS_AVAILABLE');
   }
 
+  const randomQuestions = selectRandomQuestions(questionPool, amount);
+
   const roomQuestions = [];
-  for (const [index, question] of questionPool.entries()) {
+  for (const [index, question] of randomQuestions.entries()) {
     const roomIndex = existingRoomQuestions.length + index;
     const existing = await prisma.roomQuestion.findUnique({
       where: {

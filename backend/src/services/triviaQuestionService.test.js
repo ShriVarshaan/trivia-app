@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { normalizeOpenTriviaQuestion, buildRoomQuestionPayload } from './triviaQuestionService.js';
+import { normalizeOpenTriviaQuestion, buildRoomQuestionPayload, selectRandomQuestions } from './triviaQuestionService.js';
 
 test('normalizeOpenTriviaQuestion converts Open Trivia DB fields into the app contract', () => {
   const raw = {
@@ -26,6 +26,29 @@ test('normalizeOpenTriviaQuestion converts Open Trivia DB fields into the app co
       'Central Process Utility'
     ]
   });
+});
+
+test('selectRandomQuestions shuffles the pool while keeping all choices unique', () => {
+  const originalRandom = Math.random;
+  const sequence = [0.9, 0.1, 0.8, 0.2, 0.7, 0.3, 0.6, 0.4, 0.5, 0.0, 0.95, 0.05];
+  let callCount = 0;
+
+  Math.random = () => {
+    const nextValue = sequence[callCount % sequence.length];
+    callCount += 1;
+    return nextValue;
+  };
+
+  try {
+    const pool = Array.from({ length: 12 }, (_, index) => ({ id: index + 1 }));
+    const selected = selectRandomQuestions(pool, 5);
+
+    assert.equal(selected.length, 5);
+    assert.deepStrictEqual(new Set(selected.map((item) => item.id)).size, 5);
+    assert.notDeepStrictEqual(selected.map((item) => item.id), [1, 2, 3, 4, 5]);
+  } finally {
+    Math.random = originalRandom;
+  }
 });
 
 test('buildRoomQuestionPayload keeps one question order per room and keeps all answers together', () => {
