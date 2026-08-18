@@ -1,11 +1,26 @@
 import {prisma} from "../config/prisma.js"
 import { customAlphabet } from 'nanoid';
+import { getOrCreateRoomQuestionSet } from "../services/triviaQuestionService.js";
+import { getRoomState } from "../sockets/roomSocket.js";
 
 export async function createRoom(req, res){
+    const userId = req.user.id;
+
+    const activeMembership = await prisma.roomPlayer.findFirst({
+        where: { user_id: userId },
+        orderBy: { joined_at: "desc" }
+    });
+
+    if (activeMembership) {
+        return res.status(400).json({ message: "You are already in a room. Leave it before creating a new one." });
+    }
+
     let attempts = 0;
     const attemptLimit = 5;
     const generateCode = customAlphabet('23456789ABCDEFGHJKLMNPQRSTUVWXYZ', 6);
-    let maxPlayers = 2; // Default value if not provided
+    let maxPlayers = 2;
+    let durationSeconds = 120;
+    const gameName = 'trivia';
 
     while (attempts < attemptLimit) {
         const roomCode = generateCode();
@@ -13,12 +28,22 @@ export async function createRoom(req, res){
             where: { room_id: roomCode }
         });
 
-        if (req.body && req.body.maxPlayers) {
-            maxPlayers = parseInt(req.body.maxPlayers);
+        if (req.body) {
+            if (req.body.maxPlayers !== undefined) {
+                maxPlayers = parseInt(req.body.maxPlayers, 10);
+            }
+
+            if (req.body.durationSeconds !== undefined) {
+                durationSeconds = parseInt(req.body.durationSeconds, 10);
+            }
         }
 
         if (maxPlayers < 2 || maxPlayers > 10) {
             return res.status(400).json({ message: "Max players must be between 2 and 10" });
+        }
+
+        if (!Number.isInteger(durationSeconds) || durationSeconds < 120 || durationSeconds > 600 || durationSeconds % 15 !== 0) {
+            return res.status(400).json({ message: "Room duration must be between 2 and 10 minutes in 15 second increments" });
         }
 
         if (!existingRoom) {
@@ -26,12 +51,14 @@ export async function createRoom(req, res){
                 data: {
                     room_id: roomCode,
                     host_id: req.user.id,
+                    game_name: gameName,
                     max_players: maxPlayers,
                     cur_players: 1,
+                    duration_seconds: durationSeconds,
                     players: {
                         create: {
                         user_id: req.user.id,
-                        is_ready: true // Host can default to ready
+                        is_ready: true
                         }
                     }
                 },
@@ -39,6 +66,22 @@ export async function createRoom(req, res){
                     players: true
                 }
             });
+
+            // Asynchronously generate questions so room is shown to host immediately
+            const io = req.app.get("io");
+            getOrCreateRoomQuestionSet(prisma, newRoom.room_id)
+                .then(async () => {
+                    if (io) {
+                        const updatedRoomState = await getRoomState(newRoom.room_id);
+                        if (updatedRoomState) {
+                            io.to(newRoom.room_id).emit("room_state", updatedRoomState);
+                        }
+                    }
+                })
+                .catch((error) => {
+                    console.error("Error background generating questions for room:", error);
+                });
+
             return res.status(201).json({ message: "Room created successfully", room: newRoom });
         }
         attempts++;
@@ -56,6 +99,19 @@ export async function joinRoom(req, res) {
     }
 
     try {
+        const existingMembership = await prisma.roomPlayer.findFirst({
+            where: { user_id: userId },
+            orderBy: { joined_at: "desc" }
+        });
+
+        if (existingMembership && existingMembership.room_id !== roomCode) {
+            return res.status(400).json({ message: "You are already in another room. Leave it before joining a new one." });
+        }
+
+        if (existingMembership && existingMembership.room_id === roomCode) {
+            return res.status(400).json({ message: "User is already in this room" });
+        }
+
         // Atomic transaction to check room capacity, create RoomPlayer, and increment count
         const result = await prisma.$transaction(async (tx) => {
             const room = await tx.room.findUnique({

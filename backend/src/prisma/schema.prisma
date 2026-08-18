@@ -28,20 +28,27 @@ enum RoomStatus {
   finished
 }
 
-model Room {
-  room_id     String     @id @db.Char(6)
-  host_id     Int      
-  status      RoomStatus @default(waiting)
-  max_players Int        @default(2)
-  cur_players Int        @default(1)
+enum GameName {
+  trivia
+}
 
-  host        User         @relation("HostUser", fields: [host_id], references: [id])
-  players     RoomPlayer[]
+model Room {
+  room_id          String     @id @db.Char(6)
+  host_id          Int
+  game_name        GameName   @default(trivia)
+  status           RoomStatus @default(waiting)
+  max_players      Int        @default(2)
+  cur_players      Int        @default(1)
+  duration_seconds Int        @default(120)
+
+  host             User           @relation("HostUser", fields: [host_id], references: [id])
+  players          RoomPlayer[]
+  roomQuestions    RoomQuestion[]
 }
 
 model RoomPlayer {
   id        Int      @id @default(autoincrement())
-  user_id   Int
+  user_id   Int      @unique
   room_id   String   @db.Char(6)
   joined_at DateTime @default(now())
   is_ready  Boolean  @default(false)
@@ -49,5 +56,41 @@ model RoomPlayer {
   user      User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
   room      Room     @relation(fields: [room_id], references: [room_id], onDelete: Cascade)
 
-  @@unique([user_id, room_id])
+  @@index([room_id])
+}
+
+model GameQuestion {
+  id               Int      @id @default(autoincrement())
+  game_name        GameName @default(trivia)
+  category         String?
+  difficulty       String?
+  question         String
+  correct_answer   String
+  incorrect_answers Json
+  answers          Json
+  source           String   @default("opentdb")
+  source_hash      String   @unique
+  created_at       DateTime @default(now())
+
+  roomQuestions    RoomQuestion[]
+}
+
+model RoomQuestion {
+  id              Int      @id @default(autoincrement())
+  room_id         String   @db.Char(6)
+  question_id     Int
+  game_name       GameName @default(trivia)
+  question_index  Int
+  question_text   String
+  category        String?
+  difficulty      String?
+  answers         Json
+  correct_answer  String
+  created_at      DateTime @default(now())
+
+  room            Room            @relation(fields: [room_id], references: [room_id], onDelete: Cascade)
+  question        GameQuestion    @relation(fields: [question_id], references: [id], onDelete: Cascade)
+
+  @@unique([room_id, question_index])
+  @@index([room_id])
 }

@@ -1,27 +1,82 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { socket } from "../config/socket";
 import { useAuth } from "../context/AuthContext";
 
+const formatTime = (remainingMs) => {
+  const totalSeconds = Math.max(0, Math.ceil(remainingMs / 1000));
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+
+  return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
+};
+
 export default function Room() {
   const { roomId } = useParams();
   const [players, setPlayers] = useState([]);
+  const [questions, setQuestions] = useState([]);
+  const [currentQuestion, setCurrentQuestion] = useState(null);
+  const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
+  const [totalQuestions, setTotalQuestions] = useState(0);
+  const [selectedAnswer, setSelectedAnswer] = useState("");
+  const [hasSubmittedAnswer, setHasSubmittedAnswer] = useState(false);
   const [isHost, setIsHost] = useState(false);
+  const [questionsReady, setQuestionsReady] = useState(false);
   const [gameStarted, setGameStarted] = useState(false);
-  const { isAuthenticated, user } = useAuth();
+  const [isLoadingGame, setIsLoadingGame] = useState(false);
+  const [timeLeftMs, setTimeLeftMs] = useState(0);
+  const { user } = useAuth();
   const navigate = useNavigate();
+  const joinedRoomRef = useRef(false);
 
   useEffect(() => {
     if (!roomId) return;
 
-    socket.emit("join_room", roomId);
+    if (!joinedRoomRef.current) {
+      socket.emit("join_room", roomId);
+      joinedRoomRef.current = true;
+    }
 
     const handleRoomPlayers = (playerList) => setPlayers(playerList);
     const handleRoomState = (roomState) => {
       setIsHost(Number(roomState.hostId) === Number(user?.id));
-      setGameStarted(roomState.status === "started");
+      if (roomState.questionsReady !== undefined) {
+        setQuestionsReady(Boolean(roomState.questionsReady));
+      }
+      const started = roomState.status === "started";
+      setGameStarted(started);
+
+      if (roomState.status === "finished") {
+        navigate(`/room/${roomId}/leaderboard`);
+      }
     };
-    const handleGameStarted = () => setGameStarted(true);
+    const handleRoomTimer = ({ remainingMs = 0 }) => {
+      setTimeLeftMs(Math.max(0, remainingMs));
+    };
+    const handleQuestionStarted = ({ question, questionIndex, totalQuestions: total = 0 } = {}) => {
+      setCurrentQuestion(question || null);
+      setCurrentQuestionIndex(Number(questionIndex) || 0);
+      setTotalQuestions(total);
+      setSelectedAnswer("");
+      setHasSubmittedAnswer(false);
+      setGameStarted(true);
+    };
+    const handleGameStarted = ({ questions: nextQuestions = [] } = {}) => {
+      setGameStarted(true);
+      if (nextQuestions.length > 0) {
+        setQuestions(nextQuestions);
+        setIsLoadingGame(false);
+      }
+    };
+    const handleRoomQuestions = ({ questions: nextQuestions = [] } = {}) => {
+      setQuestions(nextQuestions);
+      setGameStarted(true);
+      setIsLoadingGame(false);
+    };
+    const handleGameEnded = ({ summary = [] } = {}) => {
+      localStorage.setItem(`room_summary:${roomId}`, JSON.stringify(summary));
+      navigate(`/room/${roomId}/leaderboard`);
+    };
     const handleRoomError = (data) => {
       console.error(data?.message || "Room action failed");
       alert(data?.message || "Room action failed");
@@ -29,17 +84,29 @@ export default function Room() {
 
     socket.on("room_players", handleRoomPlayers);
     socket.on("room_state", handleRoomState);
+    socket.on("room_timer", handleRoomTimer);
+    socket.on("question_started", handleQuestionStarted);
     socket.on("game_started", handleGameStarted);
+    socket.on("room_questions", handleRoomQuestions);
+    socket.on("game_ended", handleGameEnded);
     socket.on("room_error", handleRoomError);
 
     return () => {
       socket.off("room_players", handleRoomPlayers);
       socket.off("room_state", handleRoomState);
+      socket.off("room_timer", handleRoomTimer);
+      socket.off("question_started", handleQuestionStarted);
       socket.off("game_started", handleGameStarted);
+      socket.off("room_questions", handleRoomQuestions);
+      socket.off("game_ended", handleGameEnded);
       socket.off("room_error", handleRoomError);
-      socket.emit("leave_room", roomId);
+
+      if (joinedRoomRef.current) {
+        socket.emit("leave_room", roomId);
+        joinedRoomRef.current = false;
+      }
     };
-  }, [roomId, user?.id]);
+  }, [roomId, user?.id, navigate]);
 
   const handleLeaveRoom = () => {
     navigate("/");
@@ -47,7 +114,21 @@ export default function Room() {
 
   const handleStartGame = () => {
     if (!roomId) return;
+    setIsLoadingGame(true);
     socket.emit("start_game", roomId);
+  };
+
+  const handleAnswerSubmit = () => {
+    if (!roomId || !currentQuestion || !selectedAnswer) {
+      return;
+    }
+
+    socket.emit("submit_answer", {
+      roomId,
+      questionIndex: currentQuestionIndex,
+      answer: selectedAnswer
+    });
+    setHasSubmittedAnswer(true);
   };
 
   return (
@@ -56,12 +137,77 @@ export default function Room() {
       <p>Welcome, {user?.username || "Player"}</p>
 
       {gameStarted ? (
-        <p>Game started! The quiz is now live for everyone in the room.</p>
+        <>
+          <p>Game started! Each question advances as soon as someone answers it.</p>
+          {questions.length > 0 && <p>Time remaining: {formatTime(timeLeftMs)}</p>}
+
+          {currentQuestion ? (
+            <div>
+              <h3>Question {currentQuestionIndex + 1} of {totalQuestions || questions.length || 1}</h3>
+              <p>{currentQuestion.question}</p>
+
+              <div>
+                {currentQuestion.answers?.map((answer, answerIndex) => (
+                  <button
+                    key={`${answer}-${answerIndex}`}
+                    type="button"
+                    onClick={() => !hasSubmittedAnswer && setSelectedAnswer(answer)}
+                    disabled={hasSubmittedAnswer}
+                    style={{
+                      display: "block",
+                      margin: "8px 0",
+                      opacity: hasSubmittedAnswer ? 0.7 : 1,
+                      background: selectedAnswer === answer ? "#2d6cdf" : "#f0f0f0",
+                      color: selectedAnswer === answer ? "white" : "black"
+                    }}
+                  >
+                    {answer}
+                  </button>
+                ))}
+              </div>
+
+              {!hasSubmittedAnswer && (
+                <button type="button" onClick={handleAnswerSubmit} disabled={!selectedAnswer}>
+                  Submit Answer
+                </button>
+              )}
+              {hasSubmittedAnswer && <p>Your answer has been submitted.</p>}
+            </div>
+          ) : (
+            <p>Loading current question...</p>
+          )}
+        </>
       ) : (
         <>
-          <p>{isHost ? "You are the host." : "Waiting for the host to start the game."}</p>
+          <p>
+            {isHost
+              ? "You are the host."
+              : !questionsReady
+              ? "Preparing trivia questions..."
+              : "Waiting for the host to start the game."}
+          </p>
           {isHost && (
-            <button onClick={handleStartGame}>Start Game</button>
+            <div>
+              <button
+                onClick={handleStartGame}
+                disabled={isLoadingGame || !questionsReady}
+                style={{
+                  opacity: (!questionsReady || isLoadingGame) ? 0.6 : 1,
+                  cursor: (!questionsReady || isLoadingGame) ? "not-allowed" : "pointer"
+                }}
+              >
+                {isLoadingGame
+                  ? "Starting..."
+                  : !questionsReady
+                  ? "Loading Questions..."
+                  : "Start Game"}
+              </button>
+              {!questionsReady && (
+                <p style={{ fontSize: "0.85em", color: "#666", marginTop: "4px" }}>
+                  Generating room questions, please wait...
+                </p>
+              )}
+            </div>
           )}
         </>
       )}

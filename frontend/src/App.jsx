@@ -8,6 +8,7 @@ import Home from "./pages/Home";
 import CreateRoom from "./pages/CreateRoom";
 import JoinRoom from "./pages/JoinRoom";
 import Room from "./pages/Room";
+import Leaderboard from "./pages/Leaderboard";
 
 const router = createBrowserRouter([
   {
@@ -33,6 +34,10 @@ const router = createBrowserRouter([
   {
     path: "/room/:roomId",
     element: <Room />
+  },
+  {
+    path: "/room/:roomId/leaderboard",
+    element: <Leaderboard />
   }
 ]);
 

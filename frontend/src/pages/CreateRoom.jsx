@@ -3,18 +3,28 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import axios from "../config/axios.js";
 
+const ROOM_TIME_OPTIONS = Array.from(
+    { length: ((10 * 60) - 120) / 15 + 1 },
+    (_, index) => 120 + index * 15
+);
+
 function CreateRoom() {
     const { isAuthenticated, user } = useAuth();
     const navigate = useNavigate();
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState("");
+    const [maxPlayers, setMaxPlayers] = useState(2);
+    const [durationSeconds, setDurationSeconds] = useState(120);
 
     const handleCreateRoom = async () => {
         setLoading(true);
         setError("");
 
         try {
-            const response = await axios.post("/room/create");
+            const response = await axios.post("/room/create", {
+                maxPlayers: Number(maxPlayers),
+                durationSeconds: Number(durationSeconds)
+            });
             const { room } = response.data;
             navigate(`/room/${room.room_id}`);
         } catch (err) {
@@ -41,9 +51,50 @@ function CreateRoom() {
         <div>
             <h2>Create a Room</h2>
             {error && <p>{error}</p>}
-            <button onClick={handleCreateRoom} disabled={loading}>
-                {loading ? "Creating..." : "Create Room"}
-            </button>
+
+            <div>
+                <label htmlFor="maxPlayers">Max Players: </label>
+                <select
+                    id="maxPlayers"
+                    value={maxPlayers}
+                    onChange={(e) => setMaxPlayers(Number(e.target.value))}
+                    disabled={loading}
+                >
+                    {Array.from({ length: 9 }, (_, index) => index + 2).map((value) => (
+                        <option key={value} value={value}>
+                            {value}
+                        </option>
+                    ))}
+                </select>
+            </div>
+
+            <div>
+                <label htmlFor="roomDuration">Room Time: </label>
+                <select
+                    id="roomDuration"
+                    value={durationSeconds}
+                    onChange={(e) => setDurationSeconds(Number(e.target.value))}
+                    disabled={loading}
+                >
+                    {ROOM_TIME_OPTIONS.map((value) => {
+                        const minutes = Math.floor(value / 60);
+                        const seconds = value % 60;
+                        const label = `${minutes}:${String(seconds).padStart(2, "0")}`;
+
+                        return (
+                            <option key={value} value={value}>
+                                {label}
+                            </option>
+                        );
+                    })}
+                </select>
+            </div>
+
+            <div>
+                <button onClick={handleCreateRoom} disabled={loading}>
+                    {loading ? "Creating..." : "Create Room"}
+                </button>
+            </div>
         </div>
     );
 }
