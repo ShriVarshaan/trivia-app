@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import axios from "../config/axios.js";
 import { useAuth } from "../context/AuthContext";
 import FormInput from "../components/FormInput.jsx";
@@ -35,11 +35,12 @@ export default function Login(){
 
 
     return(
-        <div className="loginPage">
-            <div className="loginPage">
+        <div className="page-container">
+            <div className="glass-card">
+                <h1>Login</h1>
                 <form onSubmit={handleSubmit} className="loginForm">
                     <FormInput 
-                        label="email" 
+                        label="Email" 
                         type="email" 
                         name="email" 
                         id="email" 
@@ -48,7 +49,7 @@ export default function Login(){
                         onChange={setEmail} 
                     />
                     <FormInput 
-                        label="password" 
+                        label="Password" 
                         type="password" 
                         name="password" 
                         id="password" 
@@ -56,8 +57,9 @@ export default function Login(){
                         value={password} 
                         onChange={setPassword} 
                     />
-                    <div className="loginButton">
-                        <button type="submit">Login</button>
+                    <button type="submit" className="btn-neon">Login</button>
+                    <div style={{ marginTop: '1rem', textAlign: 'center', fontSize: '0.9rem' }}>
+                        Don't have an account? <Link to="/signup" className="link-neon">Sign up</Link>
                     </div>
                 </form>
             </div>

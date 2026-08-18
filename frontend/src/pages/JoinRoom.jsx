@@ -47,23 +47,27 @@ function JoinRoom() {
     }
 
     return (
-        <div>
-            <h2>Join a Room</h2>
-            <form onSubmit={handleJoinRoom}>
-                {error && <p>{error}</p>}
-                <div>
-                    <input
-                        type="text"
-                        placeholder="Enter Room ID"
-                        value={roomId}
-                        onChange={(e) => setRoomId(e.target.value)}
-                        disabled={loading}
-                    />
-                </div>
-                <button type="submit" disabled={loading || !roomId.trim()}>
-                    {loading ? "Joining..." : "Join Room"}
-                </button>
-            </form>
+        <div className="page-container">
+            <div className="glass-card">
+                <h2>Join a Room</h2>
+                <form onSubmit={handleJoinRoom}>
+                    {error && <p className="error-msg">{error}</p>}
+                    <div className="form-group">
+                        <input
+                            type="text"
+                            className="input-field"
+                            placeholder="Enter Room ID"
+                            value={roomId}
+                            onChange={(e) => setRoomId(e.target.value)}
+                            disabled={loading}
+                        />
+                    </div>
+                    <button type="submit" className="btn-neon" disabled={loading || !roomId.trim()}>
+                        {loading ? "Joining..." : "Join Room"}
+                    </button>
+                    <button type="button" className="btn-secondary" onClick={() => navigate('/')}>Back to Home</button>
+                </form>
+            </div>
         </div>
     );
 }

@@ -132,9 +132,10 @@ export default function Room() {
   };
 
   return (
-    <div>
-      <h1>Room ID: {roomId}</h1>
-      <p>Welcome, {user?.username || "Player"}</p>
+    <div className="page-container">
+      <div className="glass-card" style={{ maxWidth: '800px', width: '100%' }}>
+        <h1 style={{ color: 'var(--accent-neon)', textAlign: 'center' }}>Room: {roomId}</h1>
+        <p style={{ textAlign: 'center', color: 'var(--text-secondary)' }}>Welcome, {user?.username || "Player"}</p>
 
       {gameStarted ? (
         <>
@@ -146,19 +147,20 @@ export default function Room() {
               <h3>Question {currentQuestionIndex + 1} of {totalQuestions || questions.length || 1}</h3>
               <p>{currentQuestion.question}</p>
 
-              <div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', margin: '20px 0' }}>
                 {currentQuestion.answers?.map((answer, answerIndex) => (
                   <button
                     key={`${answer}-${answerIndex}`}
                     type="button"
+                    className="btn-secondary"
                     onClick={() => !hasSubmittedAnswer && setSelectedAnswer(answer)}
                     disabled={hasSubmittedAnswer}
                     style={{
-                      display: "block",
-                      margin: "8px 0",
                       opacity: hasSubmittedAnswer ? 0.7 : 1,
-                      background: selectedAnswer === answer ? "#2d6cdf" : "#f0f0f0",
-                      color: selectedAnswer === answer ? "white" : "black"
+                      background: selectedAnswer === answer ? "var(--accent-neon)" : "transparent",
+                      color: selectedAnswer === answer ? "var(--text-dark)" : "var(--text-primary)",
+                      borderColor: selectedAnswer === answer ? "var(--accent-neon)" : "var(--card-border)",
+                      marginTop: 0
                     }}
                   >
                     {answer}
@@ -167,7 +169,7 @@ export default function Room() {
               </div>
 
               {!hasSubmittedAnswer && (
-                <button type="button" onClick={handleAnswerSubmit} disabled={!selectedAnswer}>
+                <button type="button" className="btn-neon" onClick={handleAnswerSubmit} disabled={!selectedAnswer}>
                   Submit Answer
                 </button>
               )}
@@ -187,8 +189,9 @@ export default function Room() {
               : "Waiting for the host to start the game."}
           </p>
           {isHost && (
-            <div>
+            <div style={{ textAlign: 'center', marginTop: '1rem' }}>
               <button
+                className="btn-neon"
                 onClick={handleStartGame}
                 disabled={isLoadingGame || !questionsReady}
                 style={{
@@ -212,16 +215,17 @@ export default function Room() {
         </>
       )}
 
-      <h2>Players in Room:</h2>
-      <ul>
+      <h2 style={{ marginTop: '2rem' }}>Players in Room:</h2>
+      <ul style={{ listStyle: 'none', padding: 0, marginBottom: '2rem' }}>
         {players.map((player) => (
-          <li key={player.userId}>
-            {player.username} {player.isReady ? "(Ready)" : "(Not Ready)"}
+          <li key={player.userId} style={{ padding: '0.5rem', borderBottom: '1px solid var(--card-border)' }}>
+            {player.username} <span style={{ color: player.isReady ? 'var(--accent-neon)' : 'var(--text-secondary)' }}>{player.isReady ? "(Ready)" : "(Not Ready)"}</span>
           </li>
         ))}
       </ul>
 
-      <button onClick={handleLeaveRoom}>Leave Room</button>
+      <button className="btn-secondary" onClick={handleLeaveRoom}>Leave Room</button>
+      </div>
     </div>
   );
 }

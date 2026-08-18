@@ -19,9 +19,15 @@ function Home() {
     }
     
     return (
-        <div>
-            <h1>Welcome to the Trivia App { user.username } !</h1>
-            <p>Test your knowledge and have fun!</p>
+        <div className="page-container">
+            <div className="glass-card" style={{ textAlign: 'center' }}>
+                <h1 style={{ color: 'var(--accent-neon)' }}>Trivia Time!</h1>
+                <h2 style={{ fontSize: '1.2rem', color: 'var(--text-secondary)' }}>Welcome, { user.username }</h2>
+                <p style={{ marginBottom: '2rem' }}>Test your knowledge and have fun!</p>
+                
+                <button className="btn-neon" onClick={() => navigate('/create-room')}>Create Room</button>
+                <button className="btn-secondary" onClick={() => navigate('/join-room')}>Join Room</button>
+            </div>
         </div>
     );
 }

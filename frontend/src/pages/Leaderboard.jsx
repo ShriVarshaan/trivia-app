@@ -25,22 +25,37 @@ export default function Leaderboard() {
   }, [roomId]);
 
   return (
-    <div>
-      <h1>Leaderboard</h1>
-      <p>Room: {roomId}</p>
-      <p>The game has ended.</p>
+    <div className="page-container">
+      <div className="glass-card" style={{ maxWidth: '600px', width: '100%' }}>
+        <h1 style={{ color: 'var(--accent-neon)', textAlign: 'center' }}>Leaderboard</h1>
+        <p style={{ textAlign: 'center', color: 'var(--text-secondary)' }}>Room: {roomId}</p>
+        <p style={{ textAlign: 'center', marginBottom: '2rem' }}>The game has ended.</p>
 
-      {summary.length === 0 ? (
-        <p>No results available yet.</p>
-      ) : (
-        <ol>
-          {summary.map((entry) => (
-            <li key={entry.userId}>
-              <strong>{entry.username}</strong> — {entry.correct} correct, {entry.wrong} wrong
-            </li>
-          ))}
-        </ol>
-      )}
+        {summary.length === 0 ? (
+          <p style={{ textAlign: 'center' }}>No results available yet.</p>
+        ) : (
+          <ol style={{ listStylePosition: 'inside', padding: 0 }}>
+            {summary.map((entry, index) => (
+              <li key={entry.userId} style={{ 
+                padding: '1rem', 
+                marginBottom: '1rem',
+                border: '1px solid var(--card-border)',
+                borderRadius: '12px',
+                background: index === 0 ? 'rgba(178, 255, 5, 0.1)' : 'transparent',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center'
+              }}>
+                <strong>{index + 1}. {entry.username}</strong> 
+                <span>
+                  <span style={{ color: 'var(--accent-neon)' }}>{entry.correct} correct</span>, 
+                  <span style={{ color: '#ff4d4d', marginLeft: '8px' }}>{entry.wrong} wrong</span>
+                </span>
+              </li>
+            ))}
+          </ol>
+        )}
+      </div>
     </div>
   );
 }

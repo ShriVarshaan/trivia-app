@@ -68,6 +68,8 @@ export default function App(){
   }, [isAuthenticated, user?.id, token]);
 
   return (
-    <RouterProvider router={router} />
+    <div className="app-container">
+      <RouterProvider router={router} />
+    </div>
   )
 }

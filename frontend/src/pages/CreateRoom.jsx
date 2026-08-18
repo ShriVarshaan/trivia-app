@@ -48,52 +48,57 @@ function CreateRoom() {
     }
 
     return (
-        <div>
-            <h2>Create a Room</h2>
-            {error && <p>{error}</p>}
+        <div className="page-container">
+            <div className="glass-card">
+                <h2>Create a Room</h2>
+                {error && <p className="error-msg">{error}</p>}
 
-            <div>
-                <label htmlFor="maxPlayers">Max Players: </label>
-                <select
-                    id="maxPlayers"
-                    value={maxPlayers}
-                    onChange={(e) => setMaxPlayers(Number(e.target.value))}
-                    disabled={loading}
-                >
-                    {Array.from({ length: 9 }, (_, index) => index + 2).map((value) => (
-                        <option key={value} value={value}>
-                            {value}
-                        </option>
-                    ))}
-                </select>
-            </div>
-
-            <div>
-                <label htmlFor="roomDuration">Room Time: </label>
-                <select
-                    id="roomDuration"
-                    value={durationSeconds}
-                    onChange={(e) => setDurationSeconds(Number(e.target.value))}
-                    disabled={loading}
-                >
-                    {ROOM_TIME_OPTIONS.map((value) => {
-                        const minutes = Math.floor(value / 60);
-                        const seconds = value % 60;
-                        const label = `${minutes}:${String(seconds).padStart(2, "0")}`;
-
-                        return (
-                            <option key={value} value={value}>
-                                {label}
+                <div className="form-group">
+                    <label htmlFor="maxPlayers">Max Players</label>
+                    <select
+                        id="maxPlayers"
+                        className="input-field"
+                        value={maxPlayers}
+                        onChange={(e) => setMaxPlayers(Number(e.target.value))}
+                        disabled={loading}
+                    >
+                        {Array.from({ length: 9 }, (_, index) => index + 2).map((value) => (
+                            <option key={value} value={value} style={{ color: "black" }}>
+                                {value}
                             </option>
-                        );
-                    })}
-                </select>
-            </div>
+                        ))}
+                    </select>
+                </div>
 
-            <div>
-                <button onClick={handleCreateRoom} disabled={loading}>
-                    {loading ? "Creating..." : "Create Room"}
-                </button>
+                <div className="form-group">
+                    <label htmlFor="roomDuration">Room Time</label>
+                    <select
+                        id="roomDuration"
+                        className="input-field"
+                        value={durationSeconds}
+                        onChange={(e) => setDurationSeconds(Number(e.target.value))}
+                        disabled={loading}
+                    >
+                        {ROOM_TIME_OPTIONS.map((value) => {
+                            const minutes = Math.floor(value / 60);
+                            const seconds = value % 60;
+                            const label = `${minutes}:${String(seconds).padStart(2, "0")}`;
+
+                            return (
+                                <option key={value} value={value} style={{ color: "black" }}>
+                                    {label}
+                                </option>
+                            );
+                        })}
+                    </select>
+                </div>
+
+                <div>
+                    <button className="btn-neon" onClick={handleCreateRoom} disabled={loading}>
+                        {loading ? "Creating..." : "Create Room"}
+                    </button>
+                    <button className="btn-secondary" onClick={() => navigate('/')}>Back to Home</button>
+                </div>
             </div>
         </div>
     );
