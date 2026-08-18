@@ -21,6 +21,8 @@ const Layout = () => {
   );
 };
 
+import Profile from "./pages/Profile";
+
 const router = createBrowserRouter([
   {
     path: "/",
@@ -53,6 +55,10 @@ const router = createBrowserRouter([
       {
         path: "room/:roomId/leaderboard",
         element: <Leaderboard />
+      },
+      {
+        path: "profile",
+        element: <Profile />
       }
     ]
   }

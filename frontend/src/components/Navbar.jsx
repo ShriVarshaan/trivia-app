@@ -17,7 +17,7 @@ export default function Navbar() {
             </div>
             <div className="navbar-links">
                 {isAuthenticated ? (
-                    <button onClick={handleLogout} className="btn-secondary" style={{ marginTop: 0, padding: '0.5rem 1rem' }}>Logout</button>
+                    <Link to="/profile" className="btn-secondary" style={{ marginTop: 0, padding: '0.5rem 1rem', textDecoration: 'none' }}>Profile</Link>
                 ) : (
                     <>
                         <Link to="/login" className="link-neon" style={{ marginRight: '1rem' }}>Login</Link>

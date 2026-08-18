@@ -147,6 +147,23 @@ async function finalizeRoom(io, roomId) {
   const summary = await buildRoomSummary(roomId);
   roomSessions.delete(roomId);
 
+  try {
+    const historyData = summary.map((player, index) => ({
+      user_id: player.userId,
+      room_id: roomId,
+      position: index + 1,
+      correct_answers: player.correct,
+      wrong_answers: player.wrong
+    }));
+    if (historyData.length > 0) {
+      await prisma.gameHistory.createMany({
+        data: historyData
+      });
+    }
+  } catch (error) {
+    console.error(`Error saving game history for room ${roomId}:`, error);
+  }
+
   const roomState = await getRoomState(roomId);
   const hostId = roomState?.hostId ?? room?.host_id ?? timer?.hostId ?? null;
 
