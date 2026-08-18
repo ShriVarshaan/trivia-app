@@ -41,7 +41,7 @@ export default function Leaderboard() {
                 marginBottom: '1rem',
                 border: '1px solid var(--card-border)',
                 borderRadius: '12px',
-                background: index === 0 ? 'rgba(178, 255, 5, 0.1)' : 'transparent',
+                background: index === 0 ? 'rgba(0, 243, 255, 0.1)' : 'transparent',
                 display: 'flex',
                 justifyContent: 'space-between',
                 alignItems: 'center'

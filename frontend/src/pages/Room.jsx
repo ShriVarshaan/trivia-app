@@ -139,8 +139,25 @@ export default function Room() {
 
       {gameStarted ? (
         <>
-          <p>Game started! Each question advances as soon as someone answers it.</p>
-          {questions.length > 0 && <p>Time remaining: {formatTime(timeLeftMs)}</p>}
+
+          {questions.length > 0 && (
+            <div style={{
+              position: 'absolute',
+              top: '20px',
+              right: '20px',
+              padding: '10px 20px',
+              border: '1px solid var(--card-border)',
+              borderRadius: '8px',
+              background: 'var(--card-bg)',
+              backdropFilter: 'blur(12px)',
+              color: timeLeftMs <= 10000 ? '#ff4d4d' : (timeLeftMs <= 30000 ? '#e6c200' : 'var(--text-primary)'),
+              fontWeight: 'bold',
+              fontSize: '1.2rem',
+              boxShadow: '0 4px 12px rgba(0,0,0,0.2)'
+            }}>
+              Time: {formatTime(timeLeftMs)}
+            </div>
+          )}
 
           {currentQuestion ? (
             <div>

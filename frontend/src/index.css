@@ -1,24 +1,24 @@
 @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap');
 
 :root {
-  --bg-primary: #0a1f11;
-  --bg-secondary: #0d2916;
-  --bg-tertiary: #11361c;
+  --bg-primary: #0a1128;
+  --bg-secondary: #101a3c;
+  --bg-tertiary: #162551;
   
-  --accent-neon: #b2ff05;
-  --accent-neon-hover: #c4ff33;
-  --accent-neon-active: #9eeb00;
+  --accent-neon: #00f3ff;
+  --accent-neon-hover: #33f5ff;
+  --accent-neon-active: #00c2cc;
 
   --text-primary: #ffffff;
-  --text-secondary: #a8b8ad;
+  --text-secondary: #a8b8cc;
   --text-dark: #000000;
 
   --card-bg: rgba(255, 255, 255, 0.05);
   --card-border: rgba(255, 255, 255, 0.1);
   --input-bg: rgba(0, 0, 0, 0.3);
   
-  --shadow-neon: 0 0 10px rgba(178, 255, 5, 0.5), 0 0 20px rgba(178, 255, 5, 0.3);
-  --shadow-neon-hover: 0 0 15px rgba(178, 255, 5, 0.7), 0 0 30px rgba(178, 255, 5, 0.5);
+  --shadow-neon: 0 0 10px rgba(0, 243, 255, 0.5), 0 0 20px rgba(0, 243, 255, 0.3);
+  --shadow-neon-hover: 0 0 15px rgba(0, 243, 255, 0.7), 0 0 30px rgba(0, 243, 255, 0.5);
 }
 
 * {
@@ -52,6 +52,7 @@ body {
   flex: 1;
   padding: 2rem;
   width: 100%;
+  position: relative;
 }
 
 /* Glassmorphism Card */
@@ -105,7 +106,7 @@ h1, h2, h3 {
 
 .input-field:focus {
   border-color: var(--accent-neon);
-  box-shadow: 0 0 8px rgba(178, 255, 5, 0.3);
+  box-shadow: 0 0 8px rgba(0, 243, 255, 0.3);
 }
 
 /* Buttons */
@@ -163,7 +164,7 @@ h1, h2, h3 {
 }
 
 .link-neon:hover {
-  text-shadow: 0 0 8px rgba(178, 255, 5, 0.6);
+  text-shadow: 0 0 8px rgba(0, 243, 255, 0.6);
 }
 
 /* Error message */
@@ -199,7 +200,7 @@ h1, h2, h3 {
 }
 
 .navbar-logo:hover {
-  text-shadow: 0 0 8px rgba(178, 255, 5, 0.6);
+  text-shadow: 0 0 8px rgba(0, 243, 255, 0.6);
 }
 
 .navbar-links {
