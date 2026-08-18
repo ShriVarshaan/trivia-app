@@ -10,34 +10,51 @@ import JoinRoom from "./pages/JoinRoom";
 import Room from "./pages/Room";
 import Leaderboard from "./pages/Leaderboard";
 
+import Navbar from "./components/Navbar";
+
+const Layout = () => {
+  return (
+    <>
+      <Navbar />
+      <Outlet />
+    </>
+  );
+};
+
 const router = createBrowserRouter([
   {
-    path: "/login",
-    element: <Login />
-  },
-  {
-    path: "/signup",
-    element: <Signup />
-  },
-  {
     path: "/",
-    element: <Home />
-  },
-  {
-    path: "/create-room",
-    element: <CreateRoom />
-  },
-  {
-    path: "/join-room",
-    element: <JoinRoom />
-  },
-  {
-    path: "/room/:roomId",
-    element: <Room />
-  },
-  {
-    path: "/room/:roomId/leaderboard",
-    element: <Leaderboard />
+    element: <Layout />,
+    children: [
+      {
+        path: "login",
+        element: <Login />
+      },
+      {
+        path: "signup",
+        element: <Signup />
+      },
+      {
+        index: true,
+        element: <Home />
+      },
+      {
+        path: "create-room",
+        element: <CreateRoom />
+      },
+      {
+        path: "join-room",
+        element: <JoinRoom />
+      },
+      {
+        path: "room/:roomId",
+        element: <Room />
+      },
+      {
+        path: "room/:roomId/leaderboard",
+        element: <Leaderboard />
+      }
+    ]
   }
 ]);
 
