@@ -35,9 +35,10 @@ export async function deleteAccount(req, res) {
   try {
     const userId = req.user.id;
 
-    await prisma.user.delete({
-      where: { id: userId }
-    });
+    await prisma.$transaction([
+      prisma.room.deleteMany({ where: { host_id: userId } }),
+      prisma.user.delete({ where: { id: userId } })
+    ]);
 
     res.status(200).json({ message: "Account deleted successfully" });
   } catch (error) {

@@ -8,6 +8,8 @@ export default function Profile() {
   const navigate = useNavigate();
   const [history, setHistory] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
 
   useEffect(() => {
     if (!isAuthenticated) {
@@ -52,6 +54,18 @@ export default function Profile() {
     return null;
   }
 
+  const totalPages = Math.ceil(history.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const currentHistory = history.slice(startIndex, startIndex + itemsPerPage);
+
+  const handleNextPage = () => {
+    if (currentPage < totalPages) setCurrentPage(currentPage + 1);
+  };
+
+  const handlePrevPage = () => {
+    if (currentPage > 1) setCurrentPage(currentPage - 1);
+  };
+
   return (
     <div className="page-container">
       <div className="glass-card" style={{ maxWidth: '800px', width: '100%' }}>
@@ -73,10 +87,11 @@ export default function Profile() {
             You haven't played any games yet.
           </p>
         ) : (
-          <div style={{ maxHeight: '300px', overflowY: 'auto', marginBottom: '2rem' }}>
-            <ul style={{ listStyle: 'none', padding: 0 }}>
-              {history.map((game) => (
-                <li key={game.id} style={{ 
+          <div>
+            <div style={{ maxHeight: '300px', overflowY: 'auto', marginBottom: '1rem' }}>
+              <ul style={{ listStyle: 'none', padding: 0 }}>
+                {currentHistory.map((game) => (
+                  <li key={game.id} style={{ 
                   padding: '1rem', 
                   borderBottom: '1px solid var(--card-border)',
                   display: 'flex',
@@ -100,6 +115,30 @@ export default function Profile() {
                 </li>
               ))}
             </ul>
+          </div>
+          {totalPages > 1 && (
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
+              <button 
+                className="btn-secondary" 
+                onClick={handlePrevPage} 
+                disabled={currentPage === 1}
+                style={{ padding: '0.5rem 1rem', opacity: currentPage === 1 ? 0.5 : 1, cursor: currentPage === 1 ? 'not-allowed' : 'pointer' }}
+              >
+                Previous
+              </button>
+              <span style={{ color: 'var(--text-secondary)' }}>
+                Showing {startIndex + 1}-{Math.min(startIndex + itemsPerPage, history.length)} of {history.length}
+              </span>
+              <button 
+                className="btn-secondary" 
+                onClick={handleNextPage} 
+                disabled={currentPage === totalPages}
+                style={{ padding: '0.5rem 1rem', opacity: currentPage === totalPages ? 0.5 : 1, cursor: currentPage === totalPages ? 'not-allowed' : 'pointer' }}
+              >
+                Next
+              </button>
+            </div>
+          )}
           </div>
         )}
 
