@@ -3,6 +3,7 @@ import { prisma } from "../config/prisma.js";
 export async function getProfile(req, res) {
   try {
     const userId = req.user.id;
+    console.log("Fetching profile for user:", userId);
 
     // Fetch user details
     const user = await prisma.user.findUnique({
@@ -11,6 +12,7 @@ export async function getProfile(req, res) {
     });
 
     if (!user) {
+      console.log("User not found!");
       return res.status(404).json({ message: "User not found" });
     }
 
@@ -19,6 +21,8 @@ export async function getProfile(req, res) {
       where: { user_id: userId },
       orderBy: { played_at: "desc" }
     });
+
+    console.log("History found:", history.length, "records");
 
     res.status(200).json({ user, history });
   } catch (error) {

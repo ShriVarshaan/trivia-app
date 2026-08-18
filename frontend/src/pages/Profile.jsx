@@ -17,7 +17,8 @@ export default function Profile() {
 
     const fetchProfile = async () => {
       try {
-        const response = await axios.get("/api/user/profile");
+        const response = await axios.get("/user/profile");
+        console.log("Profile data received:", response.data);
         setHistory(response.data.history);
       } catch (error) {
         console.error("Error fetching profile:", error);
@@ -37,7 +38,7 @@ export default function Profile() {
   const handleDeleteAccount = async () => {
     if (window.confirm("Are you sure you want to delete your account? This action cannot be undone.")) {
       try {
-        await axios.delete("/api/user/profile");
+        await axios.delete("/user/profile");
         logout();
         navigate("/");
       } catch (error) {
