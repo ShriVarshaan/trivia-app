@@ -8,6 +8,8 @@ export default function Otp() {
     const [otp, setOtp] = useState("");
     const [message, setMessage] = useState("");
     const [error, setError] = useState("");
+    const [isVerifying, setIsVerifying] = useState(false);
+    const [isResending, setIsResending] = useState(false);
     const navigate = useNavigate();
     const { user, isAuthenticated, updateUser } = useAuth();
 
@@ -23,6 +25,7 @@ export default function Otp() {
         e.preventDefault();
         setMessage("");
         setError("");
+        setIsVerifying(true);
 
         try {
             const response = await axios.post("/auth/verify-otp", { email: user.email, otp });
@@ -30,18 +33,23 @@ export default function Otp() {
             navigate("/");
         } catch (err) {
             setError(err.response?.data?.message || "Verification failed. Please check the OTP.");
+        } finally {
+            setIsVerifying(false);
         }
     }
 
     async function handleResend() {
         setMessage("");
         setError("");
+        setIsResending(true);
         
         try {
             await axios.post("/auth/resend-otp", { email: user.email });
             setMessage("A new OTP has been sent to your email.");
         } catch (err) {
             setError(err.response?.data?.message || "Failed to resend OTP.");
+        } finally {
+            setIsResending(false);
         }
     }
 
@@ -66,8 +74,12 @@ export default function Otp() {
                     {error && <p style={{ color: "#ff4d4d", textAlign: "center" }}>{error}</p>}
                     {message && <p style={{ color: "var(--accent-neon)", textAlign: "center" }}>{message}</p>}
 
-                    <button type="submit" className="btn-neon" disabled={!otp}>Verify</button>
-                    <button type="button" className="btn-secondary" onClick={handleResend}>Resend OTP</button>
+                    <button type="submit" className="btn-neon" disabled={!otp || isVerifying || isResending}>
+                        {isVerifying ? "Verifying..." : "Verify"}
+                    </button>
+                    <button type="button" className="btn-secondary" onClick={handleResend} disabled={isVerifying || isResending}>
+                        {isResending ? "Resending..." : "Resend OTP"}
+                    </button>
                 </form>
             </div>
         </div>
