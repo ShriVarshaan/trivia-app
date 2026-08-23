@@ -87,6 +87,9 @@ export default function Room() {
     const handleReceiveMessage = (message) => {
       setChatMessages((prev) => [...prev, message]);
     };
+    const handleUserStatusChanged = ({ userId, isOnline }) => {
+      setPlayers((prev) => prev.map(p => Number(p.userId) === Number(userId) ? { ...p, isOnline } : p));
+    };
 
     socket.on("room_players", handleRoomPlayers);
     socket.on("room_state", handleRoomState);
@@ -97,6 +100,7 @@ export default function Room() {
     socket.on("game_ended", handleGameEnded);
     socket.on("room_error", handleRoomError);
     socket.on("receive_message", handleReceiveMessage);
+    socket.on("user_status_changed", handleUserStatusChanged);
 
     return () => {
       socket.off("room_players", handleRoomPlayers);
@@ -108,6 +112,7 @@ export default function Room() {
       socket.off("game_ended", handleGameEnded);
       socket.off("room_error", handleRoomError);
       socket.off("receive_message", handleReceiveMessage);
+      socket.off("user_status_changed", handleUserStatusChanged);
 
       if (joinedRoomRef.current) {
         socket.emit("leave_room", roomId);
@@ -258,7 +263,15 @@ export default function Room() {
       <h2 style={{ marginTop: '2rem' }}>Players in Room:</h2>
       <ul style={{ listStyle: 'none', padding: 0, marginBottom: '2rem' }}>
         {players.map((player) => (
-          <li key={player.userId} style={{ padding: '0.5rem', borderBottom: '1px solid var(--card-border)' }}>
+          <li key={player.userId} style={{ padding: '0.5rem', borderBottom: '1px solid var(--card-border)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <span style={{ 
+              display: 'inline-block', 
+              width: '8px', 
+              height: '8px', 
+              borderRadius: '50%', 
+              backgroundColor: player.isOnline ? '#00ffcc' : '#666',
+              boxShadow: player.isOnline ? '0 0 5px #00ffcc' : 'none'
+            }} title={player.isOnline ? "Online" : "Offline"}></span>
             {player.username} <span style={{ color: player.isReady ? 'var(--accent-neon)' : 'var(--text-secondary)' }}>{player.isReady ? "(Ready)" : "(Not Ready)"}</span>
           </li>
         ))}

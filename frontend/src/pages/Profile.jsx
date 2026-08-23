@@ -72,7 +72,10 @@ export default function Profile() {
         <h1 style={{ color: 'var(--accent-neon)', textAlign: 'center' }}>Player Profile</h1>
         
         <div style={{ marginBottom: '2rem', textAlign: 'center' }}>
-          <h2 style={{ margin: '0 0 0.5rem 0' }}>{user.username}</h2>
+          <h2 style={{ margin: '0 0 0.5rem 0', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
+            {user.username}
+            <span style={{ display: 'inline-block', width: '10px', height: '10px', borderRadius: '50%', backgroundColor: '#00ffcc', boxShadow: '0 0 5px #00ffcc' }} title="Online"></span>
+          </h2>
           <p style={{ color: 'var(--text-secondary)' }}>{user.email}</p>
         </div>
 

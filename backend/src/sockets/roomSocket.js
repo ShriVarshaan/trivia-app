@@ -9,14 +9,15 @@ async function getRoomPlayers(roomId) {
   try {
     const rows = await prisma.roomPlayer.findMany({
       where: { room_id: roomId },
-      include: { user: { select: { id: true, username: true } } },
+      include: { user: { select: { id: true, username: true, is_online: true } } },
       orderBy: { joined_at: "asc" }
     });
 
     return rows.map((r) => ({
       userId: r.user.id,
       username: r.user.username,
-      isReady: r.is_ready
+      isReady: r.is_ready,
+      isOnline: r.user.is_online
     }));
   } catch (error) {
     console.error("Error fetching room players:", error);

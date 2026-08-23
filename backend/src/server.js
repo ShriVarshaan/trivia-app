@@ -8,6 +8,7 @@ import authRoutes from "./routes/authRoutes.js";
 import roomRoutes from "./routes/roomRoutes.js";
 import userRoutes from "./routes/userRoutes.js";
 import passport from "./config/passport.js";
+import { prisma } from "./config/prisma.js";
 
 const app = express();
 const server = http.createServer(app);
@@ -39,13 +40,36 @@ app.use("/api/user", userRoutes);
 
 io.use(socketAuthMiddleware);
 
-io.on("connection", (socket) => {
+io.on("connection", async (socket) => {
     console.log(`Socket connected: ${socket.id}`);
+
+    if (socket.user?.id) {
+        try {
+            await prisma.user.update({
+                where: { id: socket.user.id },
+                data: { is_online: true }
+            });
+            io.emit("user_status_changed", { userId: socket.user.id, isOnline: true });
+        } catch (err) {
+            console.error("Error setting user online:", err);
+        }
+    }
 
     registerRoomHandlers(io, socket);
 
-    socket.on("disconnect", () => {
+    socket.on("disconnect", async () => {
         console.log(`Socket disconnected: ${socket.id}`);
+        if (socket.user?.id) {
+            try {
+                await prisma.user.update({
+                    where: { id: socket.user.id },
+                    data: { is_online: false }
+                });
+                io.emit("user_status_changed", { userId: socket.user.id, isOnline: false });
+            } catch (err) {
+                console.error("Error setting user offline:", err);
+            }
+        }
     });
 });
 
