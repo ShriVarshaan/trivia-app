@@ -12,6 +12,9 @@ model User {
   username    String      @db.VarChar
   email       String      @unique @db.VarChar
   password    String      @db.VarChar
+  verified    Boolean     @default(false)
+  otp         String?     @db.VarChar
+  otp_expires_at DateTime?
   hostedRooms Room[]      @relation("HostUser")
   roomPlayers RoomPlayer[]
   gameHistories GameHistory[]
