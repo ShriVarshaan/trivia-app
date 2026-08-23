@@ -73,11 +73,26 @@ export async function login(req, res){
         if (!isMatch){
             return res.status(401).json({message: "Invalid credentials"})
         }
+
+        const otp = generateOTP();
+        const hashedOtp = await bcrypt.hash(otp, 10);
+        const otpExpiresAt = new Date(Date.now() + 10 * 60 * 1000);
+
+        const updatedUser = await prisma.user.update({
+            where: { email },
+            data: { verified: false, otp: hashedOtp, otp_expires_at: otpExpiresAt }
+        });
+
+        try {
+            await sendOtpEmail(email, otp);
+        } catch (e) {
+            console.error("Failed to send OTP email on login:", e);
+        }
         
-        const {password: _, otp: __, otp_expires_at: ___, ...userWithoutPassword} = user;
+        const {password: _, otp: __, otp_expires_at: ___, ...userWithoutPassword} = updatedUser;
 
         const token = jwt.sign({id: user.id}, process.env.JWT_SECRET, {expiresIn: "7d"});
-        res.status(200).json({message: "Login successful", user: userWithoutPassword, token: token})
+        res.status(200).json({message: "OTP sent to email", user: userWithoutPassword, token: token})
     } catch (error) {
         res.status(500).json({message: "Error logging in", error: error.message})
     }
