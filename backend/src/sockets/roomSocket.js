@@ -732,6 +732,19 @@ export function registerRoomHandlers (io, socket) {
     }
   });
 
+  socket.on("send_message", ({ roomId, message }) => {
+    try {
+      io.to(roomId).emit("receive_message", {
+        userId,
+        username,
+        message,
+        timestamp: new Date().toISOString()
+      });
+    } catch (error) {
+      console.error("Error sending message:", error);
+    }
+  });
+
   socket.on("leave_room", async (roomId) => {
     try {
       socket.leave(roomId);
