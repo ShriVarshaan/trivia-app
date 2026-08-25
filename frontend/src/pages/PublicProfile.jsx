@@ -9,8 +9,11 @@ export default function PublicProfile() {
   const navigate = useNavigate();
   const [profileUser, setProfileUser] = useState(null);
   const [history, setHistory] = useState([]);
+  const [friendCount, setFriendCount] = useState(0);
+  const [relationship, setRelationship] = useState("none");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [isSendingRequest, setIsSendingRequest] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
 
@@ -31,6 +34,8 @@ export default function PublicProfile() {
         const response = await axios.get(`/user/${username}`);
         setProfileUser(response.data.user);
         setHistory(response.data.history);
+        setFriendCount(response.data.friendCount || 0);
+        setRelationship(response.data.relationship || "none");
         setError(null);
       } catch (err) {
         console.error("Error fetching public profile:", err);
@@ -42,6 +47,20 @@ export default function PublicProfile() {
 
     fetchProfile();
   }, [username, isAuthenticated, navigate, user]);
+
+  const handleSendRequest = async () => {
+    if (isSendingRequest) return;
+    setIsSendingRequest(true);
+    try {
+      await axios.post(`/friends/request/${profileUser.username}`);
+      setRelationship("request_sent");
+    } catch (err) {
+      console.error("Error sending friend request:", err);
+      alert(err.response?.data?.message || "Failed to send friend request");
+    } finally {
+      setIsSendingRequest(false);
+    }
+  };
 
   if (!isAuthenticated) {
     return null;
@@ -95,6 +114,35 @@ export default function PublicProfile() {
               <span style={{ display: 'inline-block', width: '10px', height: '10px', borderRadius: '50%', backgroundColor: '#00ffcc', boxShadow: '0 0 5px #00ffcc' }} title="Online"></span>
             )}
           </h2>
+          
+          <div style={{ marginTop: '1rem', display: 'flex', justifyContent: 'center', gap: '1rem', alignItems: 'center' }}>
+            <span style={{ fontWeight: 'bold' }}>Friends: {friendCount}</span>
+            {relationship === 'none' && (
+                <button 
+                  className="btn-neon" 
+                  style={{ padding: '0.4rem 0.8rem', fontSize: '0.9rem' }} 
+                  onClick={handleSendRequest}
+                  disabled={isSendingRequest}
+                >
+                  {isSendingRequest ? "Sending..." : "Add Friend"}
+                </button>
+            )}
+            {relationship === 'request_sent' && (
+                <button className="btn-secondary" style={{ padding: '0.4rem 0.8rem', fontSize: '0.9rem', opacity: 0.7 }} disabled>
+                  Request Pending
+                </button>
+            )}
+            {relationship === 'request_received' && (
+                <span style={{ padding: '0.4rem 0.8rem', fontSize: '0.9rem', color: 'var(--accent-neon)' }}>
+                  Request Received (Check Notifications)
+                </span>
+            )}
+            {relationship === 'friends' && (
+                <button className="btn-secondary" style={{ padding: '0.4rem 0.8rem', fontSize: '0.9rem', color: '#00ffcc', borderColor: '#00ffcc' }} disabled>
+                  Friends ✓
+                </button>
+            )}
+          </div>
         </div>
 
         <h3 style={{ marginBottom: '1rem', borderBottom: '1px solid var(--card-border)', paddingBottom: '0.5rem' }}>

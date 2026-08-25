@@ -7,6 +7,7 @@ import { registerRoomHandlers } from "./sockets/roomSocket.js";
 import authRoutes from "./routes/authRoutes.js";
 import roomRoutes from "./routes/roomRoutes.js";
 import userRoutes from "./routes/userRoutes.js";
+import friendRoutes from "./routes/friendRoutes.js";
 import passport from "./config/passport.js";
 import { prisma } from "./config/prisma.js";
 
@@ -37,6 +38,7 @@ app.set("io", io);
 app.use("/api/auth", authRoutes);
 app.use("/api/room", roomRoutes);
 app.use("/api/user", userRoutes);
+app.use("/api/friends", friendRoutes);
 
 io.use(socketAuthMiddleware);
 

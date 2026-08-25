@@ -7,6 +7,7 @@ export default function Profile() {
   const { user, logout, isAuthenticated } = useAuth();
   const navigate = useNavigate();
   const [history, setHistory] = useState([]);
+  const [friendCount, setFriendCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
@@ -20,8 +21,8 @@ export default function Profile() {
     const fetchProfile = async () => {
       try {
         const response = await axios.get("/user/profile");
-        console.log("Profile data received:", response.data);
         setHistory(response.data.history);
+        setFriendCount(response.data.friendCount || 0);
       } catch (error) {
         console.error("Error fetching profile:", error);
       } finally {
@@ -77,6 +78,12 @@ export default function Profile() {
             <span style={{ display: 'inline-block', width: '10px', height: '10px', borderRadius: '50%', backgroundColor: '#00ffcc', boxShadow: '0 0 5px #00ffcc' }} title="Online"></span>
           </h2>
           <p style={{ color: 'var(--text-secondary)' }}>{user.email}</p>
+          <div style={{ marginTop: '1rem', display: 'flex', justifyContent: 'center', gap: '1rem', alignItems: 'center' }}>
+            <span style={{ fontWeight: 'bold' }}>Friends: {friendCount}</span>
+            <button className="btn-neon" style={{ padding: '0.4rem 0.8rem', fontSize: '0.9rem' }} onClick={() => navigate("/friends")}>
+                View Friends
+            </button>
+          </div>
         </div>
 
         <h3 style={{ marginBottom: '1rem', borderBottom: '1px solid var(--card-border)', paddingBottom: '0.5rem' }}>

@@ -3,7 +3,6 @@ import { prisma } from "../config/prisma.js";
 export async function getProfile(req, res) {
   try {
     const userId = req.user.id;
-    console.log("Fetching profile for user:", userId);
 
     // Fetch user details
     const user = await prisma.user.findUnique({
@@ -12,7 +11,6 @@ export async function getProfile(req, res) {
     });
 
     if (!user) {
-      console.log("User not found!");
       return res.status(404).json({ message: "User not found" });
     }
 
@@ -22,9 +20,17 @@ export async function getProfile(req, res) {
       orderBy: { played_at: "desc" }
     });
 
-    console.log("History found:", history.length, "records");
+    // Fetch friend count
+    const friendCount = await prisma.friendship.count({
+      where: {
+        OR: [
+          { user1_id: userId },
+          { user2_id: userId }
+        ]
+      }
+    });
 
-    res.status(200).json({ user, history });
+    res.status(200).json({ user, history, friendCount });
   } catch (error) {
     console.error("Error fetching profile:", error);
     res.status(500).json({ message: "Error fetching profile" });
@@ -83,6 +89,7 @@ export async function searchUsers(req, res) {
 export async function getPublicProfile(req, res) {
   try {
     const { username } = req.params;
+    const requesterId = req.user.id;
 
     const user = await prisma.user.findUnique({
       where: { username },
@@ -98,7 +105,50 @@ export async function getPublicProfile(req, res) {
       orderBy: { played_at: "desc" }
     });
 
-    res.status(200).json({ user, history });
+    const friendCount = await prisma.friendship.count({
+      where: {
+        OR: [
+          { user1_id: user.id },
+          { user2_id: user.id }
+        ]
+      }
+    });
+
+    let relationship = "none";
+
+    if (requesterId !== user.id) {
+      const isFriend = await prisma.friendship.findFirst({
+        where: {
+          OR: [
+            { user1_id: requesterId, user2_id: user.id },
+            { user1_id: user.id, user2_id: requesterId }
+          ]
+        }
+      });
+
+      if (isFriend) {
+        relationship = "friends";
+      } else {
+        const requestSent = await prisma.friendRequest.findFirst({
+          where: { sender_id: requesterId, receiver_id: user.id }
+        });
+        
+        if (requestSent) {
+          relationship = "request_sent";
+        } else {
+          const requestReceived = await prisma.friendRequest.findFirst({
+            where: { sender_id: user.id, receiver_id: requesterId }
+          });
+          if (requestReceived) {
+            relationship = "request_received";
+          }
+        }
+      }
+    } else {
+      relationship = "self";
+    }
+
+    res.status(200).json({ user, history, friendCount, relationship });
   } catch (error) {
     console.error("Error fetching public profile:", error);
     res.status(500).json({ message: "Error fetching profile" });

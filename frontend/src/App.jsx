@@ -34,6 +34,7 @@ const Layout = () => {
 import Profile from "./pages/Profile";
 import PublicProfile from "./pages/PublicProfile";
 import Search from "./pages/Search";
+import Friends from "./pages/Friends";
 
 const router = createBrowserRouter([
   {
@@ -83,6 +84,10 @@ const router = createBrowserRouter([
       {
         path: "search",
         element: <Search />
+      },
+      {
+        path: "friends",
+        element: <Friends />
       }
     ]
   }
