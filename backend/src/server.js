@@ -61,11 +61,17 @@ io.on("connection", async (socket) => {
         console.log(`Socket disconnected: ${socket.id}`);
         if (socket.user?.id) {
             try {
-                await prisma.user.update({
-                    where: { id: socket.user.id },
-                    data: { is_online: false }
-                });
-                io.emit("user_status_changed", { userId: socket.user.id, isOnline: false });
+                // Check if the user has other active sockets
+                const sockets = await io.fetchSockets();
+                const hasOtherConnections = sockets.some(s => s.user?.id === socket.user.id && s.id !== socket.id);
+
+                if (!hasOtherConnections) {
+                    await prisma.user.update({
+                        where: { id: socket.user.id },
+                        data: { is_online: false }
+                    });
+                    io.emit("user_status_changed", { userId: socket.user.id, isOnline: false });
+                }
             } catch (err) {
                 console.error("Error setting user offline:", err);
             }
@@ -73,6 +79,14 @@ io.on("connection", async (socket) => {
     });
 });
 
-server.listen(3000, () => {
+server.listen(3000, async () => {
     console.log("The server is running on port 3000");
+    try {
+        await prisma.user.updateMany({
+            data: { is_online: false }
+        });
+        console.log("Reset all users to offline status on server start.");
+    } catch (err) {
+        console.error("Failed to reset user statuses:", err);
+    }
 });
