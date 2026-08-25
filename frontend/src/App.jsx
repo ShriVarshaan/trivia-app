@@ -33,6 +33,7 @@ const Layout = () => {
 
 import Profile from "./pages/Profile";
 import PublicProfile from "./pages/PublicProfile";
+import Search from "./pages/Search";
 
 const router = createBrowserRouter([
   {
@@ -78,6 +79,10 @@ const router = createBrowserRouter([
       {
         path: "profile/:username",
         element: <PublicProfile />
+      },
+      {
+        path: "search",
+        element: <Search />
       }
     ]
   }
