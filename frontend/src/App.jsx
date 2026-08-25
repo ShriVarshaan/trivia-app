@@ -32,6 +32,7 @@ const Layout = () => {
 };
 
 import Profile from "./pages/Profile";
+import PublicProfile from "./pages/PublicProfile";
 
 const router = createBrowserRouter([
   {
@@ -73,6 +74,10 @@ const router = createBrowserRouter([
       {
         path: "profile",
         element: <Profile />
+      },
+      {
+        path: "profile/:username",
+        element: <PublicProfile />
       }
     ]
   }

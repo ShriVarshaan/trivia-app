@@ -46,3 +46,61 @@ export async function deleteAccount(req, res) {
     res.status(500).json({ message: "Error deleting account" });
   }
 }
+
+export async function searchUsers(req, res) {
+  try {
+    const q = req.query.q || "";
+    const page = parseInt(req.query.page) || 1;
+    const limit = 30;
+    const offset = (page - 1) * limit;
+
+    if (!q) {
+      return res.status(200).json({ users: [] });
+    }
+
+    // Use raw query for custom sorting: exact match first, prefix match second, substring match third
+    const users = await prisma.$queryRaw`
+      SELECT id, username, is_online
+      FROM "User"
+      WHERE username ILIKE ${'%' + q + '%'}
+      ORDER BY 
+        CASE 
+          WHEN username = ${q} THEN 1 
+          WHEN username ILIKE ${q + '%'} THEN 2 
+          ELSE 3 
+        END,
+        username ASC
+      LIMIT ${limit} OFFSET ${offset}
+    `;
+
+    res.status(200).json({ users });
+  } catch (error) {
+    console.error("Error searching users:", error);
+    res.status(500).json({ message: "Error searching users" });
+  }
+}
+
+export async function getPublicProfile(req, res) {
+  try {
+    const { username } = req.params;
+
+    const user = await prisma.user.findUnique({
+      where: { username },
+      select: { id: true, username: true, is_online: true }
+    });
+
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    const history = await prisma.gameHistory.findMany({
+      where: { user_id: user.id },
+      orderBy: { played_at: "desc" }
+    });
+
+    res.status(200).json({ user, history });
+  } catch (error) {
+    console.error("Error fetching public profile:", error);
+    res.status(500).json({ message: "Error fetching profile" });
+  }
+}
