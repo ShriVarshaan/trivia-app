@@ -47,14 +47,16 @@ export async function sendFriendRequest(req, res) {
       }
     }
 
-    const request = await prisma.friendRequest.create({
-      data: {
-        sender_id: senderId,
-        receiver_id: receiverId
-      }
+    const newRequest = await prisma.friendRequest.create({
+      data: { sender_id: senderId, receiver_id: receiver.id }
     });
 
-    res.status(201).json({ message: "Friend request sent successfully", request });
+    const io = req.app.get("io");
+    if (io) {
+      io.to(`user_${receiver.id}`).emit("new_friend_request");
+    }
+
+    res.status(201).json({ message: "Friend request sent", request: newRequest });
   } catch (error) {
     console.error("Error sending friend request:", error);
     res.status(500).json({ message: "Error sending friend request" });

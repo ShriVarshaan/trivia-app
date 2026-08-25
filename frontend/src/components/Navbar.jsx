@@ -1,7 +1,9 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import NotificationsPanel from "./NotificationsPanel";
+import axios from "../config/axios.js";
+import { socket } from "../config/socket.js";
 
 export default function Navbar() {
     const { isAuthenticated, logout } = useAuth();
@@ -9,6 +11,32 @@ export default function Navbar() {
     const [searchParams] = useSearchParams();
     const [searchQuery, setSearchQuery] = useState(searchParams.get("q") || "");
     const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
+    const [hasUnread, setHasUnread] = useState(false);
+
+    useEffect(() => {
+        if (isAuthenticated) {
+            const checkNotifications = async () => {
+                try {
+                    const response = await axios.get("/friends/requests");
+                    setHasUnread(response.data.requests.length > 0);
+                } catch (err) {
+                    console.error("Failed to check notifications", err);
+                }
+            };
+            
+            checkNotifications();
+            
+            const handleNewRequest = () => {
+                setHasUnread(true);
+            };
+
+            socket.on("new_friend_request", handleNewRequest);
+            
+            return () => {
+                socket.off("new_friend_request", handleNewRequest);
+            };
+        }
+    }, [isAuthenticated, isNotificationsOpen]);
 
     const handleSearchSubmit = (e) => {
         e.preventDefault();
@@ -65,6 +93,18 @@ export default function Navbar() {
                                     <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
                                     <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
                                 </svg>
+                                {hasUnread && (
+                                    <span style={{
+                                        position: 'absolute',
+                                        top: '6px',
+                                        right: '8px',
+                                        width: '8px',
+                                        height: '8px',
+                                        backgroundColor: '#ff4d4d',
+                                        borderRadius: '50%',
+                                        boxShadow: '0 0 5px #ff4d4d'
+                                    }}></span>
+                                )}
                             </button>
                             <Link to="/profile" className="btn-secondary" style={{ marginTop: 0, padding: '0.5rem 1rem', textDecoration: 'none' }}>Profile</Link>
                         </>

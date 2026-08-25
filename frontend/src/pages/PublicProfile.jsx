@@ -107,7 +107,7 @@ export default function PublicProfile() {
       <div className="glass-card" style={{ maxWidth: '800px', width: '100%' }}>
         <h1 style={{ color: 'var(--accent-neon)', textAlign: 'center' }}>Player Profile</h1>
         
-        <div style={{ marginBottom: '2rem', textAlign: 'center' }}>
+        <div style={{ marginBottom: '2rem', display: 'flex', flexDirection: 'column', alignItems: 'center', position: 'relative' }}>
           <h2 style={{ margin: '0 0 0.5rem 0', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
             {profileUser.username}
             {profileUser.is_online && (
@@ -115,33 +115,35 @@ export default function PublicProfile() {
             )}
           </h2>
           
-          <div style={{ marginTop: '1rem', display: 'flex', justifyContent: 'center', gap: '1rem', alignItems: 'center' }}>
+          <div style={{ marginTop: '1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', maxWidth: '300px' }}>
             <span style={{ fontWeight: 'bold' }}>Friends: {friendCount}</span>
-            {relationship === 'none' && (
-                <button 
-                  className="btn-neon" 
-                  style={{ padding: '0.4rem 0.8rem', fontSize: '0.9rem' }} 
-                  onClick={handleSendRequest}
-                  disabled={isSendingRequest}
-                >
-                  {isSendingRequest ? "Sending..." : "Add Friend"}
-                </button>
-            )}
-            {relationship === 'request_sent' && (
-                <button className="btn-secondary" style={{ padding: '0.4rem 0.8rem', fontSize: '0.9rem', opacity: 0.7 }} disabled>
-                  Request Pending
-                </button>
-            )}
-            {relationship === 'request_received' && (
-                <span style={{ padding: '0.4rem 0.8rem', fontSize: '0.9rem', color: 'var(--accent-neon)' }}>
-                  Request Received (Check Notifications)
-                </span>
-            )}
-            {relationship === 'friends' && (
-                <button className="btn-secondary" style={{ padding: '0.4rem 0.8rem', fontSize: '0.9rem', color: '#00ffcc', borderColor: '#00ffcc' }} disabled>
-                  Friends ✓
-                </button>
-            )}
+            <div>
+              {relationship === 'none' && (
+                  <button 
+                    className="btn-neon" 
+                    style={{ padding: '0.2rem 0.6rem', fontSize: '0.8rem', marginTop: 0, width: 'auto' }} 
+                    onClick={handleSendRequest}
+                    disabled={isSendingRequest}
+                  >
+                    {isSendingRequest ? "Sending..." : "Add Friend"}
+                  </button>
+              )}
+              {relationship === 'request_sent' && (
+                  <button className="btn-secondary" style={{ padding: '0.2rem 0.6rem', fontSize: '0.8rem', opacity: 0.7, marginTop: 0, width: 'auto' }} disabled>
+                    Pending
+                  </button>
+              )}
+              {relationship === 'request_received' && (
+                  <span style={{ fontSize: '0.8rem', color: 'var(--accent-neon)' }}>
+                    Request Received
+                  </span>
+              )}
+              {relationship === 'friends' && (
+                  <button className="btn-secondary" style={{ padding: '0.2rem 0.6rem', fontSize: '0.8rem', color: '#00ffcc', borderColor: '#00ffcc', marginTop: 0, width: 'auto' }} disabled>
+                    Friends ✓
+                  </button>
+              )}
+            </div>
           </div>
         </div>
 

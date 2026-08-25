@@ -46,6 +46,7 @@ io.on("connection", async (socket) => {
     console.log(`Socket connected: ${socket.id}`);
 
     if (socket.user?.id) {
+        socket.join(`user_${socket.user.id}`);
         try {
             await prisma.user.update({
                 where: { id: socket.user.id },
