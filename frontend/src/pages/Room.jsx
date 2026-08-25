@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { socket } from "../config/socket";
 import { useAuth } from "../context/AuthContext";
+import axios from "../config/axios.js";
 
 const formatTime = (remainingMs) => {
   const totalSeconds = Math.max(0, Math.ceil(remainingMs / 1000));
@@ -27,6 +28,8 @@ export default function Room() {
   const [timeLeftMs, setTimeLeftMs] = useState(0);
   const [chatMessages, setChatMessages] = useState([]);
   const [currentMessage, setCurrentMessage] = useState("");
+  const [friends, setFriends] = useState([]);
+  const [invitedFriends, setInvitedFriends] = useState(new Set());
   const chatMessagesRef = useRef(null);
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -120,6 +123,20 @@ export default function Room() {
       }
     };
   }, [roomId, user?.id, navigate]);
+
+  useEffect(() => {
+    if (isHost && !gameStarted) {
+      const fetchFriends = async () => {
+        try {
+          const response = await axios.get("/friends");
+          setFriends(response.data.friends.filter(f => f.is_online));
+        } catch (err) {
+          console.error("Error fetching friends:", err);
+        }
+      };
+      fetchFriends();
+    }
+  }, [isHost, gameStarted]);
 
   useEffect(() => {
     if (chatMessagesRef.current) {
@@ -255,6 +272,35 @@ export default function Room() {
                   Generating room questions, please wait...
                 </p>
               )}
+
+              <div style={{ marginTop: '2rem', textAlign: 'left', borderTop: '1px solid var(--card-border)', paddingTop: '1.5rem' }}>
+                <h3 style={{ color: 'var(--accent-neon)', marginBottom: '1rem', textAlign: 'center' }}>Invite Friends Online</h3>
+                {friends.length === 0 ? (
+                  <p style={{ color: 'var(--text-secondary)', textAlign: 'center' }}>No friends currently online.</p>
+                ) : (
+                  <ul style={{ listStyle: 'none', padding: 0 }}>
+                    {friends.map(friend => (
+                      <li key={friend.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.8rem', borderBottom: '1px solid rgba(255,255,255,0.05)', backgroundColor: 'rgba(0,0,0,0.2)', borderRadius: '8px', marginBottom: '0.5rem' }}>
+                        <span style={{ display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 'bold' }}>
+                          <span style={{ display: 'inline-block', width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#00ffcc', boxShadow: '0 0 5px #00ffcc' }}></span>
+                          {friend.username}
+                        </span>
+                        <button 
+                          className="btn-secondary" 
+                          style={{ padding: '0.3rem 0.8rem', fontSize: '0.8rem', width: 'auto', marginTop: 0, borderColor: invitedFriends.has(friend.id) ? 'var(--text-secondary)' : 'var(--accent-neon)', color: invitedFriends.has(friend.id) ? 'var(--text-secondary)' : 'var(--accent-neon)' }}
+                          disabled={invitedFriends.has(friend.id) || players.some(p => p.userId === friend.id)}
+                          onClick={() => {
+                            socket.emit("send_room_invite", { roomId, targetUserId: friend.id });
+                            setInvitedFriends(prev => new Set(prev).add(friend.id));
+                          }}
+                        >
+                          {players.some(p => p.userId === friend.id) ? "In Room" : invitedFriends.has(friend.id) ? "Invited" : "Invite"}
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
             </div>
           )}
         </>

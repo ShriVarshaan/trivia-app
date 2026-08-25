@@ -746,6 +746,18 @@ export function registerRoomHandlers (io, socket) {
     }
   });
 
+  socket.on("send_room_invite", ({ roomId, targetUserId }) => {
+    try {
+      io.to(`user_${targetUserId}`).emit("receive_room_invite", {
+        roomId,
+        senderUsername: username,
+        senderId: userId
+      });
+    } catch (error) {
+      console.error("Error sending room invite:", error);
+    }
+  });
+
   socket.on("leave_room", async (roomId) => {
     try {
       socket.leave(roomId);

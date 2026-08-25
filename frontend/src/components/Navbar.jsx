@@ -12,13 +12,14 @@ export default function Navbar() {
     const [searchQuery, setSearchQuery] = useState(searchParams.get("q") || "");
     const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
     const [hasUnread, setHasUnread] = useState(false);
+    const [roomInvites, setRoomInvites] = useState([]);
 
     useEffect(() => {
         if (isAuthenticated) {
             const checkNotifications = async () => {
                 try {
                     const response = await axios.get("/friends/requests");
-                    setHasUnread(response.data.requests.length > 0);
+                    setHasUnread(response.data.requests.length > 0 || roomInvites.length > 0);
                 } catch (err) {
                     console.error("Failed to check notifications", err);
                 }
@@ -30,13 +31,23 @@ export default function Navbar() {
                 setHasUnread(true);
             };
 
+            const handleRoomInvite = (invite) => {
+                setRoomInvites(prev => {
+                    if (prev.find(i => i.roomId === invite.roomId)) return prev;
+                    return [invite, ...prev];
+                });
+                setHasUnread(true);
+            };
+
             socket.on("new_friend_request", handleNewRequest);
+            socket.on("receive_room_invite", handleRoomInvite);
             
             return () => {
                 socket.off("new_friend_request", handleNewRequest);
+                socket.off("receive_room_invite", handleRoomInvite);
             };
         }
-    }, [isAuthenticated, isNotificationsOpen]);
+    }, [isAuthenticated, isNotificationsOpen, roomInvites.length]);
 
     const handleSearchSubmit = (e) => {
         e.preventDefault();
@@ -117,7 +128,12 @@ export default function Navbar() {
                 </div>
             </nav>
 
-            <NotificationsPanel isOpen={isNotificationsOpen} onClose={() => setIsNotificationsOpen(false)} />
+            <NotificationsPanel 
+                isOpen={isNotificationsOpen} 
+                onClose={() => setIsNotificationsOpen(false)} 
+                roomInvites={roomInvites}
+                setRoomInvites={setRoomInvites}
+            />
         </>
     );
 }
