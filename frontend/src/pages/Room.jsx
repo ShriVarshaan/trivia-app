@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { socket } from "../config/socket";
 import { useAuth } from "../context/AuthContext";
+import axios from "../config/axios.js";
 
 const formatTime = (remainingMs) => {
   const totalSeconds = Math.max(0, Math.ceil(remainingMs / 1000));
@@ -25,6 +26,11 @@ export default function Room() {
   const [gameStarted, setGameStarted] = useState(false);
   const [isLoadingGame, setIsLoadingGame] = useState(false);
   const [timeLeftMs, setTimeLeftMs] = useState(0);
+  const [chatMessages, setChatMessages] = useState([]);
+  const [currentMessage, setCurrentMessage] = useState("");
+  const [friends, setFriends] = useState([]);
+  const [invitedFriends, setInvitedFriends] = useState(new Set());
+  const chatMessagesRef = useRef(null);
   const { user } = useAuth();
   const navigate = useNavigate();
   const joinedRoomRef = useRef(false);
@@ -81,6 +87,12 @@ export default function Room() {
       console.error(data?.message || "Room action failed");
       alert(data?.message || "Room action failed");
     };
+    const handleReceiveMessage = (message) => {
+      setChatMessages((prev) => [...prev, message]);
+    };
+    const handleUserStatusChanged = ({ userId, isOnline }) => {
+      setPlayers((prev) => prev.map(p => Number(p.userId) === Number(userId) ? { ...p, isOnline } : p));
+    };
 
     socket.on("room_players", handleRoomPlayers);
     socket.on("room_state", handleRoomState);
@@ -90,6 +102,8 @@ export default function Room() {
     socket.on("room_questions", handleRoomQuestions);
     socket.on("game_ended", handleGameEnded);
     socket.on("room_error", handleRoomError);
+    socket.on("receive_message", handleReceiveMessage);
+    socket.on("user_status_changed", handleUserStatusChanged);
 
     return () => {
       socket.off("room_players", handleRoomPlayers);
@@ -100,6 +114,8 @@ export default function Room() {
       socket.off("room_questions", handleRoomQuestions);
       socket.off("game_ended", handleGameEnded);
       socket.off("room_error", handleRoomError);
+      socket.off("receive_message", handleReceiveMessage);
+      socket.off("user_status_changed", handleUserStatusChanged);
 
       if (joinedRoomRef.current) {
         socket.emit("leave_room", roomId);
@@ -107,6 +123,26 @@ export default function Room() {
       }
     };
   }, [roomId, user?.id, navigate]);
+
+  useEffect(() => {
+    if (isHost && !gameStarted) {
+      const fetchFriends = async () => {
+        try {
+          const response = await axios.get("/friends");
+          setFriends(response.data.friends.filter(f => f.is_online));
+        } catch (err) {
+          console.error("Error fetching friends:", err);
+        }
+      };
+      fetchFriends();
+    }
+  }, [isHost, gameStarted]);
+
+  useEffect(() => {
+    if (chatMessagesRef.current) {
+      chatMessagesRef.current.scrollTop = chatMessagesRef.current.scrollHeight;
+    }
+  }, [chatMessages]);
 
   const handleLeaveRoom = () => {
     navigate("/");
@@ -131,9 +167,18 @@ export default function Room() {
     setHasSubmittedAnswer(true);
   };
 
+  const handleSendMessage = (e) => {
+    e.preventDefault();
+    if (currentMessage.trim() && roomId) {
+      socket.emit("send_message", { roomId, message: currentMessage });
+      setCurrentMessage("");
+    }
+  };
+
   return (
     <div className="page-container">
-      <div className="glass-card" style={{ maxWidth: '800px', width: '100%' }}>
+      <div style={{ display: 'flex', flexDirection: 'row', flexWrap: 'wrap', gap: '2rem', alignItems: 'flex-start', width: '100%', maxWidth: '1200px', justifyContent: 'center' }}>
+      <div className="glass-card" style={{ flex: '1 1 600px', maxWidth: '800px', width: '100%' }}>
         <h1 style={{ color: 'var(--accent-neon)', textAlign: 'center' }}>Room: {roomId}</h1>
         <p style={{ textAlign: 'center', color: 'var(--text-secondary)' }}>Welcome, {user?.username || "Player"}</p>
 
@@ -227,6 +272,35 @@ export default function Room() {
                   Generating room questions, please wait...
                 </p>
               )}
+
+              <div style={{ marginTop: '2rem', textAlign: 'left', borderTop: '1px solid var(--card-border)', paddingTop: '1.5rem' }}>
+                <h3 style={{ color: 'var(--accent-neon)', marginBottom: '1rem', textAlign: 'center' }}>Invite Friends Online</h3>
+                {friends.length === 0 ? (
+                  <p style={{ color: 'var(--text-secondary)', textAlign: 'center' }}>No friends currently online.</p>
+                ) : (
+                  <ul style={{ listStyle: 'none', padding: 0 }}>
+                    {friends.map(friend => (
+                      <li key={friend.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.8rem', borderBottom: '1px solid rgba(255,255,255,0.05)', backgroundColor: 'rgba(0,0,0,0.2)', borderRadius: '8px', marginBottom: '0.5rem' }}>
+                        <span style={{ display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 'bold' }}>
+                          <span style={{ display: 'inline-block', width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#00ffcc', boxShadow: '0 0 5px #00ffcc' }}></span>
+                          {friend.username}
+                        </span>
+                        <button 
+                          className="btn-secondary" 
+                          style={{ padding: '0.3rem 0.8rem', fontSize: '0.8rem', width: 'auto', marginTop: 0, borderColor: invitedFriends.has(friend.id) ? 'var(--text-secondary)' : 'var(--accent-neon)', color: invitedFriends.has(friend.id) ? 'var(--text-secondary)' : 'var(--accent-neon)' }}
+                          disabled={invitedFriends.has(friend.id) || players.some(p => p.userId === friend.id)}
+                          onClick={() => {
+                            socket.emit("send_room_invite", { roomId, targetUserId: friend.id });
+                            setInvitedFriends(prev => new Set(prev).add(friend.id));
+                          }}
+                        >
+                          {players.some(p => p.userId === friend.id) ? "In Room" : invitedFriends.has(friend.id) ? "Invited" : "Invite"}
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
             </div>
           )}
         </>
@@ -235,13 +309,66 @@ export default function Room() {
       <h2 style={{ marginTop: '2rem' }}>Players in Room:</h2>
       <ul style={{ listStyle: 'none', padding: 0, marginBottom: '2rem' }}>
         {players.map((player) => (
-          <li key={player.userId} style={{ padding: '0.5rem', borderBottom: '1px solid var(--card-border)' }}>
+          <li key={player.userId} style={{ padding: '0.5rem', borderBottom: '1px solid var(--card-border)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <span style={{ 
+              display: 'inline-block', 
+              width: '8px', 
+              height: '8px', 
+              borderRadius: '50%', 
+              backgroundColor: player.isOnline ? '#00ffcc' : '#666',
+              boxShadow: player.isOnline ? '0 0 5px #00ffcc' : 'none'
+            }} title={player.isOnline ? "Online" : "Offline"}></span>
             {player.username} <span style={{ color: player.isReady ? 'var(--accent-neon)' : 'var(--text-secondary)' }}>{player.isReady ? "(Ready)" : "(Not Ready)"}</span>
           </li>
         ))}
       </ul>
 
       <button className="btn-secondary" onClick={handleLeaveRoom}>Leave Room</button>
+      </div>
+
+      {/* Chat Sidebar */}
+      <div className="glass-card" style={{ flex: '1 1 350px', maxWidth: '400px', display: 'flex', flexDirection: 'column', height: '80vh', width: '100%' }}>
+        <h2 style={{ marginTop: 0, marginBottom: '1rem', color: 'var(--accent-neon)', textAlign: 'center' }}>Room Chat</h2>
+        
+        <div 
+          ref={chatMessagesRef}
+          style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '1rem', paddingRight: '10px' }}
+        >
+          {chatMessages.length === 0 ? (
+            <p style={{ textAlign: 'center', color: 'var(--text-secondary)', margin: 'auto' }}>No messages yet. Say hi!</p>
+          ) : (
+            chatMessages.map((msg, idx) => (
+              <div key={idx} style={{ 
+                alignSelf: msg.userId === user?.id ? 'flex-end' : 'flex-start',
+                background: msg.userId === user?.id ? 'rgba(0, 255, 204, 0.1)' : 'rgba(255, 255, 255, 0.05)',
+                border: msg.userId === user?.id ? '1px solid var(--accent-neon)' : '1px solid var(--card-border)',
+                padding: '8px 12px',
+                borderRadius: '12px',
+                maxWidth: '85%'
+              }}>
+                <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '4px' }}>
+                  {msg.username} <span style={{ opacity: 0.5 }}>{new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                </span>
+                <span style={{ color: 'var(--text-primary)', wordBreak: 'break-word' }}>{msg.message}</span>
+              </div>
+            ))
+          )}
+        </div>
+
+        <form onSubmit={handleSendMessage} style={{ display: 'flex', gap: '10px' }}>
+          <input
+            type="text"
+            value={currentMessage}
+            onChange={(e) => setCurrentMessage(e.target.value)}
+            placeholder="Type a message..."
+            style={{ flex: 1, padding: '10px', borderRadius: '8px', border: '1px solid var(--card-border)', background: 'rgba(0,0,0,0.2)', color: 'var(--text-primary)' }}
+          />
+          <button type="submit" className="btn-neon" style={{ margin: 0, padding: '10px 16px' }} disabled={!currentMessage.trim()}>
+            Send
+          </button>
+        </form>
+      </div>
+
       </div>
     </div>
   );

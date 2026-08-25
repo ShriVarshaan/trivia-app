@@ -1,9 +1,10 @@
-import { createBrowserRouter, RouterProvider, Link, Outlet } from "react-router-dom";
+import { createBrowserRouter, RouterProvider, Link, Outlet, Navigate, useLocation } from "react-router-dom";
 import { useEffect } from "react";
 import { useAuth } from "./context/AuthContext.jsx";
 import { socket } from "./config/socket.js";
 import Login from "./pages/Login";
 import Signup from "./pages/Signup";
+import Otp from "./pages/Otp";
 import Home from "./pages/Home";
 import CreateRoom from "./pages/CreateRoom";
 import JoinRoom from "./pages/JoinRoom";
@@ -13,6 +14,15 @@ import Leaderboard from "./pages/Leaderboard";
 import Navbar from "./components/Navbar";
 
 const Layout = () => {
+  const { isAuthenticated, user, loading } = useAuth();
+  const location = useLocation();
+
+  if (loading) return null;
+
+  if (isAuthenticated && user && user.verified === false && location.pathname !== '/otp' && location.pathname !== '/login' && location.pathname !== '/signup') {
+    return <Navigate to="/otp" replace />;
+  }
+
   return (
     <>
       <Navbar />
@@ -22,6 +32,9 @@ const Layout = () => {
 };
 
 import Profile from "./pages/Profile";
+import PublicProfile from "./pages/PublicProfile";
+import Search from "./pages/Search";
+import Friends from "./pages/Friends";
 
 const router = createBrowserRouter([
   {
@@ -35,6 +48,10 @@ const router = createBrowserRouter([
       {
         path: "signup",
         element: <Signup />
+      },
+      {
+        path: "otp",
+        element: <Otp />
       },
       {
         index: true,
@@ -59,6 +76,18 @@ const router = createBrowserRouter([
       {
         path: "profile",
         element: <Profile />
+      },
+      {
+        path: "profile/:username",
+        element: <PublicProfile />
+      },
+      {
+        path: "search",
+        element: <Search />
+      },
+      {
+        path: "friends",
+        element: <Friends />
       }
     ]
   }

@@ -9,12 +9,20 @@ datasource db {
 
 model User {
   id          Int         @id @default(autoincrement())
-  username    String      @db.VarChar
+  username    String      @unique @db.VarChar
   email       String      @unique @db.VarChar
   password    String      @db.VarChar
+  verified    Boolean     @default(false)
+  is_online   Boolean     @default(false)
+  otp         String?     @db.VarChar
+  otp_expires_at DateTime?
   hostedRooms Room[]      @relation("HostUser")
   roomPlayers RoomPlayer[]
-  gameHistories GameHistory[]
+  gameHistories    GameHistory[]
+  user1Friends     Friendship[]    @relation("User1Friends")
+  user2Friends     Friendship[]    @relation("User2Friends")
+  sentRequests     FriendRequest[] @relation("SentRequests")
+  receivedRequests FriendRequest[] @relation("ReceivedRequests")
 }
 
 model GameHistory {
@@ -27,6 +35,37 @@ model GameHistory {
   played_at      DateTime @default(now())
 
   user           User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+}
+
+model Friendship {
+  id         Int      @id @default(autoincrement())
+  user1_id   Int
+  user2_id   Int
+  created_at DateTime @default(now())
+
+  user1      User     @relation("User1Friends", fields: [user1_id], references: [id], onDelete: Cascade)
+  user2      User     @relation("User2Friends", fields: [user2_id], references: [id], onDelete: Cascade)
+
+  @@unique([user1_id, user2_id])
+}
+
+model FriendRequest {
+  id          Int           @id @default(autoincrement())
+  sender_id   Int
+  receiver_id Int
+  status      RequestStatus @default(pending)
+  created_at  DateTime      @default(now())
+
+  sender      User          @relation("SentRequests", fields: [sender_id], references: [id], onDelete: Cascade)
+  receiver    User          @relation("ReceivedRequests", fields: [receiver_id], references: [id], onDelete: Cascade)
+
+  @@unique([sender_id, receiver_id])
+}
+
+enum RequestStatus {
+  pending
+  accepted
+  rejected
 }
 
 model Room {

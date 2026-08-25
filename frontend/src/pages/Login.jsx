@@ -8,6 +8,7 @@ export default function Login(){
 
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
+    const [isLoading, setIsLoading] = useState(false);
     const navigate = useNavigate();
     const { isAuthenticated, login } = useAuth();
 
@@ -20,6 +21,7 @@ export default function Login(){
 
     async function handleSubmit(event){
         event.preventDefault();
+        setIsLoading(true);
 
         try{
             const response = await axios.post("/auth/login", {email, password});
@@ -30,6 +32,8 @@ export default function Login(){
         } catch (error) {
             console.error("Login failed:", error);
             alert("Login failed. Please check your credentials and try again.");
+        } finally {
+            setIsLoading(false);
         }
     }
 
@@ -57,7 +61,9 @@ export default function Login(){
                         value={password} 
                         onChange={setPassword} 
                     />
-                    <button type="submit" className="btn-neon">Login</button>
+                    <button type="submit" className="btn-neon" disabled={isLoading}>
+                        {isLoading ? "Logging in..." : "Login"}
+                    </button>
                     <div style={{ marginTop: '1rem', textAlign: 'center', fontSize: '0.9rem' }}>
                         Don't have an account? <Link to="/signup" className="link-neon">Sign up</Link>
                     </div>

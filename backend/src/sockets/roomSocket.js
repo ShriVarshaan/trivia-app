@@ -9,14 +9,15 @@ async function getRoomPlayers(roomId) {
   try {
     const rows = await prisma.roomPlayer.findMany({
       where: { room_id: roomId },
-      include: { user: { select: { id: true, username: true } } },
+      include: { user: { select: { id: true, username: true, is_online: true } } },
       orderBy: { joined_at: "asc" }
     });
 
     return rows.map((r) => ({
       userId: r.user.id,
       username: r.user.username,
-      isReady: r.is_ready
+      isReady: r.is_ready,
+      isOnline: r.user.is_online
     }));
   } catch (error) {
     console.error("Error fetching room players:", error);
@@ -729,6 +730,31 @@ export function registerRoomHandlers (io, socket) {
     } catch (error) {
       console.error("Error starting game:", error);
       socket.emit("room_error", { message: "Unable to start the game." });
+    }
+  });
+
+  socket.on("send_message", ({ roomId, message }) => {
+    try {
+      io.to(roomId).emit("receive_message", {
+        userId,
+        username,
+        message,
+        timestamp: new Date().toISOString()
+      });
+    } catch (error) {
+      console.error("Error sending message:", error);
+    }
+  });
+
+  socket.on("send_room_invite", ({ roomId, targetUserId }) => {
+    try {
+      io.to(`user_${targetUserId}`).emit("receive_room_invite", {
+        roomId,
+        senderUsername: username,
+        senderId: userId
+      });
+    } catch (error) {
+      console.error("Error sending room invite:", error);
     }
   });
 

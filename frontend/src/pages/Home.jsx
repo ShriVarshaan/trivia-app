@@ -1,7 +1,5 @@
-import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext.jsx";
-
 
 function Home() {
     const { isAuthenticated, user } = useAuth();
@@ -17,7 +15,7 @@ function Home() {
     
     return (
         <div className="page-container">
-            <div className="glass-card" style={{ textAlign: 'center' }}>
+            <div className="glass-card" style={{ textAlign: 'center', marginBottom: '2rem' }}>
                 <h1 style={{ color: 'var(--accent-neon)' }}>Trivia Time!</h1>
                 <h2 style={{ fontSize: '1.2rem', color: 'var(--text-secondary)' }}>
                     {isAuthenticated && user ? `Welcome, ${user.username}` : "Welcome to TriviaBlitz!"}

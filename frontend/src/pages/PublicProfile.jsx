@@ -1,14 +1,19 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import axios from "../config/axios.js";
 
-export default function Profile() {
-  const { user, logout, isAuthenticated } = useAuth();
+export default function PublicProfile() {
+  const { username } = useParams();
+  const { isAuthenticated, user } = useAuth();
   const navigate = useNavigate();
+  const [profileUser, setProfileUser] = useState(null);
   const [history, setHistory] = useState([]);
   const [friendCount, setFriendCount] = useState(0);
+  const [relationship, setRelationship] = useState("none");
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [isSendingRequest, setIsSendingRequest] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
 
@@ -18,41 +23,71 @@ export default function Profile() {
       return;
     }
 
+    // If navigating to own profile via search, redirect to regular profile
+    if (user && user.username === username) {
+      navigate("/profile");
+      return;
+    }
+
     const fetchProfile = async () => {
       try {
-        const response = await axios.get("/user/profile");
+        const response = await axios.get(`/user/${username}`);
+        setProfileUser(response.data.user);
         setHistory(response.data.history);
         setFriendCount(response.data.friendCount || 0);
-      } catch (error) {
-        console.error("Error fetching profile:", error);
+        setRelationship(response.data.relationship || "none");
+        setError(null);
+      } catch (err) {
+        console.error("Error fetching public profile:", err);
+        setError(err.response?.data?.message || "User not found");
       } finally {
         setLoading(false);
       }
     };
 
     fetchProfile();
-  }, [isAuthenticated, navigate]);
+  }, [username, isAuthenticated, navigate, user]);
 
-  const handleLogout = () => {
-    logout();
-    navigate("/");
-  };
-
-  const handleDeleteAccount = async () => {
-    if (window.confirm("Are you sure you want to delete your account? This action cannot be undone.")) {
-      try {
-        await axios.delete("/user/profile");
-        logout();
-        navigate("/");
-      } catch (error) {
-        console.error("Error deleting account:", error);
-        alert("Failed to delete account. Please try again later.");
-      }
+  const handleSendRequest = async () => {
+    if (isSendingRequest) return;
+    setIsSendingRequest(true);
+    try {
+      await axios.post(`/friends/request/${profileUser.username}`);
+      setRelationship("request_sent");
+    } catch (err) {
+      console.error("Error sending friend request:", err);
+      alert(err.response?.data?.message || "Failed to send friend request");
+    } finally {
+      setIsSendingRequest(false);
     }
   };
 
-  if (!isAuthenticated || !user) {
+  if (!isAuthenticated) {
     return null;
+  }
+
+  if (loading) {
+    return (
+      <div className="page-container">
+        <div className="glass-card" style={{ maxWidth: '800px', width: '100%', textAlign: 'center' }}>
+          <p>Loading profile...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error || !profileUser) {
+    return (
+      <div className="page-container">
+        <div className="glass-card" style={{ maxWidth: '800px', width: '100%', textAlign: 'center' }}>
+          <h1 style={{ color: '#ff4d4d' }}>Error</h1>
+          <p>{error || "User not found"}</p>
+          <button className="btn-secondary" onClick={() => navigate("/")} style={{ marginTop: '1rem' }}>
+            Go Home
+          </button>
+        </div>
+      </div>
+    );
   }
 
   const totalPages = Math.ceil(history.length / itemsPerPage);
@@ -74,15 +109,41 @@ export default function Profile() {
         
         <div style={{ marginBottom: '2rem', display: 'flex', flexDirection: 'column', alignItems: 'center', position: 'relative' }}>
           <h2 style={{ margin: '0 0 0.5rem 0', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
-            {user.username}
-            <span style={{ display: 'inline-block', width: '10px', height: '10px', borderRadius: '50%', backgroundColor: '#00ffcc', boxShadow: '0 0 5px #00ffcc' }} title="Online"></span>
+            {profileUser.username}
+            {profileUser.is_online && (
+              <span style={{ display: 'inline-block', width: '10px', height: '10px', borderRadius: '50%', backgroundColor: '#00ffcc', boxShadow: '0 0 5px #00ffcc' }} title="Online"></span>
+            )}
           </h2>
-          <p style={{ color: 'var(--text-secondary)' }}>{user.email}</p>
+          
           <div style={{ marginTop: '1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', maxWidth: '300px' }}>
             <span style={{ fontWeight: 'bold' }}>Friends: {friendCount}</span>
-            <button className="btn-neon" style={{ padding: '0.2rem 0.6rem', fontSize: '0.8rem', marginTop: 0, width: 'auto' }} onClick={() => navigate("/friends")}>
-                View Friends
-            </button>
+            <div>
+              {relationship === 'none' && (
+                  <button 
+                    className="btn-neon" 
+                    style={{ padding: '0.2rem 0.6rem', fontSize: '0.8rem', marginTop: 0, width: 'auto' }} 
+                    onClick={handleSendRequest}
+                    disabled={isSendingRequest}
+                  >
+                    {isSendingRequest ? "Sending..." : "Add Friend"}
+                  </button>
+              )}
+              {relationship === 'request_sent' && (
+                  <button className="btn-secondary" style={{ padding: '0.2rem 0.6rem', fontSize: '0.8rem', opacity: 0.7, marginTop: 0, width: 'auto' }} disabled>
+                    Pending
+                  </button>
+              )}
+              {relationship === 'request_received' && (
+                  <span style={{ fontSize: '0.8rem', color: 'var(--accent-neon)' }}>
+                    Request Received
+                  </span>
+              )}
+              {relationship === 'friends' && (
+                  <button className="btn-secondary" style={{ padding: '0.2rem 0.6rem', fontSize: '0.8rem', color: '#00ffcc', borderColor: '#00ffcc', marginTop: 0, width: 'auto' }} disabled>
+                    Friends ✓
+                  </button>
+              )}
+            </div>
           </div>
         </div>
 
@@ -90,11 +151,9 @@ export default function Profile() {
           Game History
         </h3>
         
-        {loading ? (
-          <p>Loading history...</p>
-        ) : history.length === 0 ? (
+        {history.length === 0 ? (
           <p style={{ textAlign: 'center', color: 'var(--text-secondary)', margin: '2rem 0' }}>
-            You haven't played any games yet.
+            {profileUser.username} hasn't played any games yet.
           </p>
         ) : (
           <div>
@@ -151,15 +210,6 @@ export default function Profile() {
           )}
           </div>
         )}
-
-        <div style={{ display: 'flex', gap: '1rem', marginTop: '2rem' }}>
-          <button className="btn-secondary" onClick={handleLogout} style={{ flex: 1 }}>
-            Logout
-          </button>
-          <button className="btn-secondary" onClick={handleDeleteAccount} style={{ flex: 1, borderColor: '#ff4d4d', color: '#ff4d4d' }}>
-            Delete Account
-          </button>
-        </div>
       </div>
     </div>
   );
